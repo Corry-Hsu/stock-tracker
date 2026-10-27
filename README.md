@@ -1,5 +1,3 @@
-# stock-tracker
-互動式「台股標的即時報酬追蹤系統」
 # 台股標的即時報酬追蹤系統 (TW Stock Portfolio Tracker)
 
 這是一個以 **JSON 資料格式驅動** 的台股投資組合即時看盤與報酬率追蹤網頁。支援台股「紅漲綠跌」配色、即時報價同步、盤中模擬跳動、視覺化資產配置圖表，以及一鍵將已出場標的「鎖定出場價」不再隨盤勢波動。
@@ -12,3 +10,9 @@
   - `status: "exited"` 且 `trackLive: false`：鎖定於 `exitPrice` 出場成交價，不再隨大盤跳動。
 - **零後端依賴 (GitHub Pages Ready)**：單一 `index.html` 即可直接透過 GitHub Pages 發佈為個人看盤網站。
 
+## 快速部署至 GitHub Pages
+
+1. 在 GitHub 建立新儲存庫（例如 `tw-stock-portfolio-tracker`）。
+2. 上傳本專案中的 `index.html`、`portfolio.json` 與 `README.md`。
+3. 進入儲存庫的 **Settings** → **Pages**，在 **Build and deployment** 將 Source 設為 `Deploy from a branch`，分支選擇 `main`（目錄 `/ (root)`）並儲存。
+4. 數十秒後即可透過 `https://corry-hsu.github.io/tw-stock-portfolio-tracker/` 隨時開啟看盤。
