@@ -166,3 +166,21 @@ test('falls back to TWSE MIS batch endpoint when per-stock Yahoo and FinMind fai
   assert.equal(topoint.prevClose, 433);
   assert.match(a.run('quoteLabel(portfolioData.positions.find(p => p.symbol === "3231"))'), /證交所/);
 });
+
+test('groups multiple lots of the same symbol with weighted average cost, latest date, and max target price', () => {
+  const a = app();
+  const groups = a.run('groupPositionsBySymbol(portfolioData.positions.filter(p => p.status === "active"), "active")');
+  assert.equal(groups.length, 11);
+  const tsmc = groups.find(g => g.symbol === '2330');
+  assert.equal(tsmc.items.length, 4);
+  assert.equal(tsmc.totalShares, 55);
+  assert.equal(tsmc.totalCost, 10 * 2500 + 20 * 2435 + 20 * 2432.5 + 5 * 2410);
+  assert.equal(Number(tsmc.avgBuyPrice.toFixed(2)), 2443.64);
+  assert.equal(tsmc.latestDate, '2026-10-20');
+
+  const nanya = groups.find(g => g.symbol === '2408');
+  assert.equal(nanya.items.length, 2);
+  assert.equal(nanya.totalShares, 110);
+  assert.equal(nanya.latestDate, '2026-10-15');
+  assert.equal(nanya.maxTargetPrice, 570);
+});

@@ -186,12 +186,15 @@
       <!-- 1. Active Tracking Section (First Priority) -->
       <div id="activeSectionWrapper" class="space-y-3">
         <div class="flex flex-wrap items-center justify-between gap-2">
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-2 flex-wrap">
             <span class="w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-full bg-rose-600 dark:bg-rose-500"></span>
-            <h2 class="text-base sm:text-xl font-black text-slate-900 dark:text-white">即時追蹤中標的 (Active Holdings)</h2>
+            <h2 class="text-base sm:text-xl font-black text-slate-900 dark:text-white">即時追蹤中標的 (同標的自動合併總覽)</h2>
+            <button id="btnToggleAllGroups" type="button" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:hover:bg-indigo-500/25 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30 transition">
+              展開全部明細
+            </button>
           </div>
           <div class="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-400">
-            💡 點擊「<b>目前現價</b>」框可直接修改數字試算損益
+            💡 點擊「<b>分批明細</b>」可展開各次買進紀錄；修改現價會同步套用至同標的
           </div>
         </div>
 
@@ -207,14 +210,14 @@
               <thead>
                 <tr class="border-b-2 border-slate-200 dark:border-slate-800 text-sm font-bold text-slate-700 dark:text-slate-300 bg-slate-100/90 dark:bg-slate-950/70">
                   <th class="py-4 px-4">股票名稱 / 代號</th>
-                  <th class="py-4 px-3 text-right">持有股數與成本</th>
-                  <th class="py-4 px-3 text-right">買進均價</th>
+                  <th class="py-4 px-3 text-right">合計股數與總成本</th>
+                  <th class="py-4 px-3 text-right">平均成本價</th>
                   <th class="py-4 px-3 text-right">目前現價 (可改)</th>
                   <th class="py-4 px-3 text-right">今日漲跌</th>
-                  <th class="py-4 px-3 text-right">累積損益金額</th>
-                  <th class="py-4 px-3 text-right">報酬率 (ROI)</th>
-                  <th class="py-4 px-4">買進日期 / 目標價</th>
-                  <th class="py-4 px-4 text-right">操作按鈕</th>
+                  <th class="py-4 px-3 text-right">總累積損益</th>
+                  <th class="py-4 px-3 text-right">平均報酬率</th>
+                  <th class="py-4 px-4">最新買進 / 最高目標價</th>
+                  <th class="py-4 px-4 text-right">分批明細 / 操作</th>
                 </tr>
               </thead>
               <tbody id="activeTableBody" class="divide-y-2 divide-slate-100 dark:divide-slate-800/80 text-base">
@@ -965,6 +968,7 @@
     let roiChart = null;
     let allocationChart = null;
     let lastFlashMap = {};
+    let expandedGroups = new Set();
     let isDarkMode = true;
 
     function initTheme() {
@@ -1209,6 +1213,107 @@
       }
     }
 
+    function groupPositionsBySymbol(list, statusType) {
+      const map = new Map();
+      for (const p of list) {
+        const key = `${statusType}:${p.market}:${p.symbol}`;
+        if (!map.has(key)) {
+          map.set(key, {
+            key,
+            statusType,
+            symbol: p.symbol,
+            market: p.market,
+            name: p.name.replace(/\s*\(.*?\)\s*$/, '') || p.name,
+            items: []
+          });
+        }
+        map.get(key).items.push(p);
+      }
+
+      const groups = [];
+      for (const g of map.values()) {
+        // Sort child lots by date + time descending (newest first)
+        g.items.sort((a, b) => {
+          const da = `${a.exitDate || a.tradeDate || ''} ${a.tradeTime || ''}`;
+          const db = `${b.exitDate || b.tradeDate || ''} ${b.tradeTime || ''}`;
+          return db.localeCompare(da);
+        });
+
+        let totalShares = 0;
+        let totalCost = 0;
+        let costShares = 0;
+        let totalExitProceeds = 0;
+        let maxTargetPrice = null;
+        let latestDate = '';
+        let latestTime = '';
+        let anyAssumed = false;
+
+        for (const item of g.items) {
+          const sh = Number(item.shares) || 0;
+          totalShares += sh;
+          if (item.sharesAssumed) anyAssumed = true;
+
+          if (item.buyPrice !== null && item.buyPrice !== undefined && Number(item.buyPrice) > 0) {
+            totalCost += sh * Number(item.buyPrice);
+            costShares += sh;
+          }
+          const exP = Number(item.exitPrice ?? item.currentPrice) || 0;
+          totalExitProceeds += sh * exP;
+
+          if (item.targetPrice && Number(item.targetPrice) > 0) {
+            const tp = Number(item.targetPrice);
+            if (maxTargetPrice === null || tp > maxTargetPrice) {
+              maxTargetPrice = tp;
+            }
+          }
+
+          const dStr = statusType === 'exited' ? (item.exitDate || item.tradeDate || '') : (item.tradeDate || '');
+          const tStr = item.tradeTime || '';
+          if (`${dStr} ${tStr}` >= `${latestDate} ${latestTime}`) {
+            latestDate = dStr;
+            latestTime = tStr;
+          }
+        }
+
+        const primary = g.items[0];
+        const currentPrice = Number(primary.currentPrice) || 0;
+        const prevClose = Number(primary.prevClose) || currentPrice;
+        const avgBuyPrice = costShares > 0 ? (totalCost / costShares) : null;
+        const avgExitPrice = totalShares > 0 ? (totalExitProceeds / totalShares) : 0;
+
+        const marketValue = totalShares * currentPrice;
+        const unrealizedPnl = avgBuyPrice !== null ? (marketValue - totalCost) : null;
+        const avgRoi = (avgBuyPrice !== null && totalCost > 0) ? ((unrealizedPnl / totalCost) * 100) : null;
+
+        const realizedPnl = costShares === totalShares && costShares > 0 ? (totalExitProceeds - totalCost) : null;
+        const exitedRoi = (realizedPnl !== null && totalCost > 0) ? ((realizedPnl / totalCost) * 100) : null;
+
+        g.totalShares = totalShares;
+        g.totalCost = totalCost;
+        g.costShares = costShares;
+        g.avgBuyPrice = avgBuyPrice;
+        g.currentPrice = currentPrice;
+        g.prevClose = prevClose;
+        g.marketValue = marketValue;
+        g.unrealizedPnl = unrealizedPnl;
+        g.avgRoi = avgRoi;
+        g.totalExitProceeds = totalExitProceeds;
+        g.avgExitPrice = avgExitPrice;
+        g.realizedPnl = realizedPnl;
+        g.exitedRoi = exitedRoi;
+        g.maxTargetPrice = maxTargetPrice;
+        g.latestDate = latestDate;
+        g.latestTime = latestTime;
+        g.anyAssumed = anyAssumed;
+        g.primaryItem = primary;
+        groups.push(g);
+      }
+
+      // Sort groups by latest trade date descending
+      groups.sort((a, b) => `${b.latestDate} ${b.latestTime}`.localeCompare(`${a.latestDate} ${a.latestTime}`));
+      return groups;
+    }
+
     function renderTables() {
       const positions = portfolioData.positions || [];
       const q = searchQuery.trim().toLowerCase();
@@ -1225,6 +1330,9 @@
       const activeList = filtered.filter(p => p.status === "active" && p.trackLive !== false);
       const exitedList = filtered.filter(p => p.status === "exited" || p.trackLive === false);
 
+      const activeGroups = groupPositionsBySymbol(activeList, "active");
+      const exitedGroups = groupPositionsBySymbol(exitedList, "exited");
+
       const activeWrapper = document.getElementById("activeSectionWrapper");
       const exitedWrapper = document.getElementById("exitedSectionWrapper");
       activeWrapper.classList.toggle("hidden", currentFilter === "exited");
@@ -1233,7 +1341,7 @@
       const activeBody = document.getElementById("activeTableBody");
       const activeMobile = document.getElementById("activeMobileCards");
 
-      if (activeList.length === 0) {
+      if (activeGroups.length === 0) {
         const emptyHtml = `
           <div class="py-8 px-4 text-center text-slate-500 dark:text-slate-400 text-sm sm:text-base font-medium bg-white dark:bg-slate-900 rounded-2xl border-2 border-slate-200 dark:border-slate-800">
             目前沒有符合條件的「追蹤中」標的。可點擊右上方「新增標的」或從下方已出場清單恢復追蹤。
@@ -1242,61 +1350,96 @@
         activeMobile.innerHTML = emptyHtml;
         activeBody.innerHTML = `<tr><td colspan="9" class="py-10 text-center text-slate-500 dark:text-slate-400 text-base font-medium">目前沒有符合條件的「追蹤中」標的。</td></tr>`;
       } else {
-        // 1. Render Mobile Native Cards for Active Holdings
-        activeMobile.innerHTML = activeList.map(p => {
-          const shares = Number(p.shares) || 0;
-          const buy = Number(p.buyPrice) || 0;
-          const cur = Number(p.currentPrice) || 0;
-          const prev = Number(p.prevClose) || cur;
-
-          const dayDiff = cur - prev;
-          const dayPct = prev > 0 ? (dayDiff / prev) * 100 : 0;
-          const pnl = (cur - buy) * shares;
-          const roi = buy > 0 ? ((cur - buy) / buy) * 100 : 0;
-          const flashCls = lastFlashMap[p.id] === "up" ? "flash-up" : (lastFlashMap[p.id] === "down" ? "flash-down" : "");
+        // 1. Render Mobile Native Hierarchical Cards for Active Holdings
+        activeMobile.innerHTML = activeGroups.map(g => {
+          const p = g.primaryItem;
+          const isExpanded = expandedGroups.has(g.key);
+          const lotCount = g.items.length;
+          const dayDiff = g.currentPrice - g.prevClose;
+          const dayPct = g.prevClose > 0 ? (dayDiff / g.prevClose) * 100 : 0;
+          const flashCls = g.items.some(it => lastFlashMap[it.id] === "up")
+            ? "flash-up"
+            : (g.items.some(it => lastFlashMap[it.id] === "down") ? "flash-down" : "");
 
           let targetBadge = "";
-          if (p.targetPrice && Number(p.targetPrice) > 0) {
-            const upside = ((Number(p.targetPrice) - cur) / cur) * 100;
+          if (g.maxTargetPrice && g.maxTargetPrice > 0) {
+            const upside = ((g.maxTargetPrice - g.currentPrice) / g.currentPrice) * 100;
             targetBadge = `
               <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-900 dark:bg-indigo-500/20 dark:text-indigo-300 font-mono text-xs font-bold">
-                🎯 目標 ${fmtPrice(p.targetPrice)} (${upside >= 0 ? "+" : ""}${upside.toFixed(0)}%)
+                🎯 最高目標 ${fmtPrice(g.maxTargetPrice)} (${upside >= 0 ? "+" : ""}${upside.toFixed(0)}%)
               </span>
             `;
           }
 
+          const childLotsHtml = g.items.map((lot, idx) => {
+            const lotSh = Number(lot.shares) || 0;
+            const lotBuy = Number(lot.buyPrice) || 0;
+            const lotPnl = (g.currentPrice - lotBuy) * lotSh;
+            const lotRoi = lotBuy > 0 ? ((g.currentPrice - lotBuy) / lotBuy) * 100 : 0;
+            return `
+              <div class="p-3 rounded-xl bg-slate-100/90 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2">
+                <div class="flex items-center justify-between gap-2">
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="px-2 py-0.5 rounded bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 font-mono text-xs font-bold">#${idx + 1}</span>
+                    <span class="font-mono text-xs font-bold text-slate-700 dark:text-slate-300">📅 ${escapeHtml(lot.tradeDate || "—")} ${escapeHtml(lot.tradeTime || "")}</span>
+                    <span class="text-xs font-bold px-2 py-0.5 rounded bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300">${escapeHtml(lot.actionLabel || "買進")}</span>
+                    ${lot.sharesAssumed ? `<span class="text-[11px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 dark:bg-amber-500/20 dark:text-amber-300">預設${lotSh}股</span>` : ""}
+                  </div>
+                  <span class="font-mono text-xs font-black px-2 py-0.5 rounded-lg ${getTwBadgeClass(lotRoi)}">${fmtPct(lotRoi)}</span>
+                </div>
+                <div class="flex items-center justify-between text-xs font-mono text-slate-600 dark:text-slate-300">
+                  <span>股數: <b class="text-slate-900 dark:text-white">${lotSh.toLocaleString("zh-TW")} 股</b></span>
+                  <span>買價: <b class="text-slate-900 dark:text-white">${fmtPrice(lotBuy)}</b></span>
+                  <span>損益: <b class="${getTwColorClass(lotPnl)}">${fmtSignedCurrency(lotPnl)}</b></span>
+                </div>
+                <div class="flex items-center justify-end gap-1.5 pt-1 border-t border-slate-200/70 dark:border-slate-800/80">
+                  <button type="button" data-action="lock-exit" data-id="${escapeHtml(lot.id)}" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-100 text-amber-950 dark:bg-amber-500/20 dark:text-amber-300 border border-amber-300 dark:border-amber-500/30">
+                    鎖定出場
+                  </button>
+                  <button type="button" data-action="edit-pos" data-id="${escapeHtml(lot.id)}" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700">
+                    編輯此筆
+                  </button>
+                  <button type="button" data-action="delete-pos" data-id="${escapeHtml(lot.id)}" class="px-2 py-1 rounded-lg text-xs font-bold bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-700">
+                    刪除
+                  </button>
+                </div>
+              </div>
+            `;
+          }).join("");
+
           return `
             <div class="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm space-y-3 ${flashCls}">
-              <!-- Top Row: Stock Name & Symbol + ROI & PnL -->
+              <!-- Top Row: Stock Name & Symbol + Aggregated ROI & PnL -->
               <div class="flex items-start justify-between gap-2">
                 <div>
                   <div class="flex items-center gap-2 flex-wrap">
-                    <span class="text-lg font-black text-slate-900 dark:text-white leading-tight">${escapeHtml(p.name)}</span>
-                    <span class="px-2 py-0.5 rounded-md bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-indigo-300 font-mono font-bold text-xs">${escapeHtml(p.symbol)}</span><span class="block text-xs text-slate-500 dark:text-slate-400">${escapeHtml(quoteLabel(p))}</span>
+                    <span class="text-lg font-black text-slate-900 dark:text-white leading-tight">${escapeHtml(g.name)}</span>
+                    <span class="px-2 py-0.5 rounded-md bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-indigo-300 font-mono font-bold text-xs">${escapeHtml(g.symbol)}</span>
+                    <span class="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 dark:bg-indigo-500/20 dark:text-indigo-300 font-bold text-xs">共 ${lotCount} 筆</span>
                   </div>
+                  <span class="block text-xs text-slate-500 dark:text-slate-400 mt-0.5">${escapeHtml(quoteLabel(p))}</span>
                   <div class="mt-1 flex flex-wrap items-center gap-1.5">
-                    <span class="text-xs font-bold px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300">${escapeHtml(p.actionLabel || "買進")}</span>
-                    ${p.sharesAssumed ? `<span class="text-xs font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 dark:bg-amber-500/20 dark:text-amber-300">預設${shares}股</span>` : ""}
-                    <span class="font-mono text-xs font-semibold text-slate-500 dark:text-slate-400">📅 ${escapeHtml(p.tradeDate || "—")}</span>
+                    <span class="font-mono text-xs font-semibold text-slate-500 dark:text-slate-400">📅 最新買進 ${escapeHtml(g.latestDate || "—")}</span>
+                    ${g.anyAssumed ? `<span class="text-xs font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 dark:bg-amber-500/20 dark:text-amber-300">含預設股數</span>` : ""}
                   </div>
                 </div>
 
                 <div class="text-right shrink-0">
-                  <span class="inline-block px-2.5 py-1 rounded-xl font-mono font-black text-sm ${getTwBadgeClass(roi)}">
-                    ${fmtPct(roi)}
+                  <span class="inline-block px-2.5 py-1 rounded-xl font-mono font-black text-sm ${getTwBadgeClass(g.avgRoi)}">
+                    ${fmtPct(g.avgRoi)}
                   </span>
-                  <div class="font-mono text-base font-black mt-1 ${getTwColorClass(pnl)}">
-                    ${fmtSignedCurrency(pnl)}
+                  <div class="font-mono text-base font-black mt-1 ${getTwColorClass(g.unrealizedPnl)}">
+                    ${fmtSignedCurrency(g.unrealizedPnl)}
                   </div>
                 </div>
               </div>
 
-              <!-- Middle Grid: Shares, Buy Price, Editable Current Price & Today Change -->
+              <!-- Middle Grid: Avg Cost / Total Shares, Today Change, Editable Current Price -->
               <div class="grid grid-cols-3 gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950/80 border border-slate-200/80 dark:border-slate-800/80 items-center">
                 <div>
-                  <div class="text-[11px] font-bold text-slate-500 dark:text-slate-400">買進均價 / 股數</div>
-                  <div class="font-mono text-sm font-black text-slate-900 dark:text-white mt-0.5">${fmtPrice(buy)}</div>
-                  <div class="font-mono text-xs font-semibold text-slate-500 dark:text-slate-400">${shares.toLocaleString("zh-TW")} 股</div>
+                  <div class="text-[11px] font-bold text-slate-500 dark:text-slate-400">平均成本 / 總股數</div>
+                  <div class="font-mono text-sm font-black text-slate-900 dark:text-white mt-0.5">${fmtPrice(g.avgBuyPrice)}</div>
+                  <div class="font-mono text-xs font-semibold text-slate-500 dark:text-slate-400">${g.totalShares.toLocaleString("zh-TW")} 股</div>
                 </div>
 
                 <div>
@@ -1314,79 +1457,142 @@
                     step="0.01"
                     data-action="quick-price"
                     data-id="${escapeHtml(p.id)}"
-                    value="${cur}"
+                    value="${g.currentPrice}"
                     class="w-full text-right bg-white dark:bg-slate-900 border-2 border-slate-300 dark:border-slate-700 focus:border-indigo-500 rounded-lg px-2 py-1 font-mono font-black text-sm ${getTwColorClass(dayDiff)} focus:outline-none"
                   >
                 </div>
               </div>
 
-              <!-- Bottom Row: Market Value / Target Price + 3 Touch-Friendly Action Buttons -->
+              <!-- Bottom Row: Market Value / Max Target Price + Expand Details Toggle -->
               <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
                 <div class="flex flex-wrap items-center gap-1.5 text-xs font-mono text-slate-500 dark:text-slate-400">
-                  <span>市值 <b class="text-slate-800 dark:text-slate-200">${fmtCurrency(shares * cur)}</b></span>
+                  <span>總市值 <b class="text-slate-800 dark:text-slate-200">${fmtCurrency(g.marketValue)}</b></span>
                   ${targetBadge}
                 </div>
 
                 <div class="flex items-center gap-1.5 ml-auto">
-                  <button type="button" data-action="lock-exit" data-id="${escapeHtml(p.id)}" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-100 hover:bg-amber-200 text-amber-950 dark:bg-amber-500/20 dark:text-amber-300 border border-amber-300 dark:border-amber-500/30">
-                    鎖定出場
+                  <button type="button" data-action="toggle-group" data-group-key="${escapeHtml(g.key)}" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition flex items-center gap-1">
+                    <span>${isExpanded ? "▲ 收合明細" : `▼ 分批明細 (${lotCount})`}</span>
                   </button>
-                  <button type="button" data-action="edit-pos" data-id="${escapeHtml(p.id)}" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700">
-                    編輯
-                  </button>
-                  <button type="button" data-action="delete-pos" data-id="${escapeHtml(p.id)}" class="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-700">
-                    刪除
-                  </button>
+                  ${lotCount === 1 ? `
+                    <button type="button" data-action="lock-exit" data-id="${escapeHtml(p.id)}" class="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-amber-100 text-amber-950 dark:bg-amber-500/20 dark:text-amber-300 border border-amber-300 dark:border-amber-500/30">
+                      鎖定出場
+                    </button>
+                    <button type="button" data-action="edit-pos" data-id="${escapeHtml(p.id)}" class="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700">
+                      編輯
+                    </button>
+                  ` : ""}
                 </div>
+              </div>
+
+              <!-- Second-Level Expandable Child Lots -->
+              <div class="${isExpanded ? "block" : "hidden"} pt-2 border-t-2 border-dashed border-slate-200 dark:border-slate-800 space-y-2">
+                <div class="text-xs font-bold text-slate-500 dark:text-slate-400">📋 ${escapeHtml(g.name)} (${escapeHtml(g.symbol)}) 分批買進明細：</div>
+                ${childLotsHtml}
               </div>
             </div>
           `;
         }).join("");
 
-        // 2. Render Desktop Table for Active Holdings
-        activeBody.innerHTML = activeList.map(p => {
-          const shares = Number(p.shares) || 0;
-          const buy = Number(p.buyPrice) || 0;
-          const cur = Number(p.currentPrice) || 0;
-          const prev = Number(p.prevClose) || cur;
-
-          const dayDiff = cur - prev;
-          const dayPct = prev > 0 ? (dayDiff / prev) * 100 : 0;
-          const pnl = (cur - buy) * shares;
-          const roi = buy > 0 ? ((cur - buy) / buy) * 100 : 0;
-
-          const flashCls = lastFlashMap[p.id] === "up" ? "flash-up" : (lastFlashMap[p.id] === "down" ? "flash-down" : "");
+        // 2. Render Desktop Hierarchical Table for Active Holdings
+        activeBody.innerHTML = activeGroups.map(g => {
+          const p = g.primaryItem;
+          const isExpanded = expandedGroups.has(g.key);
+          const lotCount = g.items.length;
+          const dayDiff = g.currentPrice - g.prevClose;
+          const dayPct = g.prevClose > 0 ? (dayDiff / g.prevClose) * 100 : 0;
+          const flashCls = g.items.some(it => lastFlashMap[it.id] === "up")
+            ? "flash-up"
+            : (g.items.some(it => lastFlashMap[it.id] === "down") ? "flash-down" : "");
 
           let targetHtml = "";
-          if (p.targetPrice && Number(p.targetPrice) > 0) {
-            const upside = ((Number(p.targetPrice) - cur) / cur) * 100;
+          if (g.maxTargetPrice && g.maxTargetPrice > 0) {
+            const upside = ((g.maxTargetPrice - g.currentPrice) / g.currentPrice) * 100;
             targetHtml = `
               <div class="mt-1">
                 <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-indigo-100 text-indigo-900 dark:bg-indigo-500/20 dark:text-indigo-300 font-mono text-xs font-bold">
-                  🎯 目標價 ${fmtPrice(p.targetPrice)} (${upside >= 0 ? "+" : ""}${upside.toFixed(0)}%)
+                  🎯 最高目標 ${fmtPrice(g.maxTargetPrice)} (${upside >= 0 ? "+" : ""}${upside.toFixed(0)}%)
                 </span>
               </div>
             `;
           }
 
+          const childRowsHtml = g.items.map((lot, idx) => {
+            const lotSh = Number(lot.shares) || 0;
+            const lotBuy = Number(lot.buyPrice) || 0;
+            const lotCost = lotSh * lotBuy;
+            const lotPnl = (g.currentPrice - lotBuy) * lotSh;
+            const lotRoi = lotBuy > 0 ? ((g.currentPrice - lotBuy) / lotBuy) * 100 : 0;
+            return `
+              <tr class="${isExpanded ? "" : "hidden"} bg-slate-50/90 dark:bg-slate-950/70 border-l-4 border-indigo-500 text-sm transition">
+                <td class="py-3 pl-8 pr-4">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span class="px-2 py-0.5 rounded bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 font-mono text-xs font-bold">批次 #${idx + 1}</span>
+                    <span class="text-xs font-bold px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300">${escapeHtml(lot.actionLabel || "買進")}</span>
+                    ${lot.sharesAssumed ? `<span class="text-xs font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 dark:bg-amber-500/20 dark:text-amber-300">預設${lotSh}股</span>` : ""}
+                  </div>
+                </td>
+                <td class="py-3 px-3 text-right font-mono">
+                  <div class="font-bold text-slate-800 dark:text-slate-200">${lotSh.toLocaleString("zh-TW")} 股</div>
+                  <div class="text-xs text-slate-500 dark:text-slate-400">成本 ${fmtCurrency(lotCost)}</div>
+                </td>
+                <td class="py-3 px-3 text-right font-mono font-bold text-slate-800 dark:text-slate-200">
+                  ${fmtPrice(lotBuy)}
+                </td>
+                <td class="py-3 px-3 text-right font-mono text-xs text-slate-500 dark:text-slate-400">
+                  同現價 ${fmtPrice(g.currentPrice)}
+                </td>
+                <td class="py-3 px-3 text-right font-mono text-xs text-slate-400">
+                  —
+                </td>
+                <td class="py-3 px-3 text-right font-mono">
+                  <div class="font-black ${getTwColorClass(lotPnl)}">${fmtSignedCurrency(lotPnl)}</div>
+                </td>
+                <td class="py-3 px-3 text-right font-mono">
+                  <span class="inline-block px-2.5 py-1 rounded-lg font-bold text-xs ${getTwBadgeClass(lotRoi)}">
+                    ${fmtPct(lotRoi)}
+                  </span>
+                </td>
+                <td class="py-3 px-4 whitespace-nowrap font-mono text-xs text-slate-600 dark:text-slate-300">
+                  <div>📅 ${escapeHtml(lot.tradeDate || "—")} ${escapeHtml(lot.tradeTime || "")}</div>
+                  ${lot.targetPrice ? `<div class="text-indigo-600 dark:text-indigo-400 mt-0.5">單筆目標 ${fmtPrice(lot.targetPrice)}</div>` : ""}
+                </td>
+                <td class="py-3 px-4 text-right whitespace-nowrap">
+                  <div class="inline-flex items-center justify-end gap-1.5">
+                    <button type="button" data-action="lock-exit" data-id="${escapeHtml(lot.id)}" class="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-amber-100 hover:bg-amber-200 text-amber-950 dark:bg-amber-500/20 dark:hover:bg-amber-500/30 dark:text-amber-300 border border-amber-300 dark:border-amber-500/30 transition">
+                      鎖定出場
+                    </button>
+                    <button type="button" data-action="edit-pos" data-id="${escapeHtml(lot.id)}" class="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 transition">
+                      編輯
+                    </button>
+                    <button type="button" data-action="delete-pos" data-id="${escapeHtml(lot.id)}" class="px-2 py-1.5 rounded-lg text-xs font-bold bg-white hover:bg-rose-100 dark:bg-slate-800 dark:hover:bg-rose-900/60 text-slate-600 hover:text-rose-700 dark:text-slate-400 dark:hover:text-rose-300 border border-slate-300 dark:border-slate-700 transition">
+                      刪除
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            `;
+          }).join("");
+
           return `
             <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition ${flashCls}">
               <td class="py-4 px-4">
-                <div class="text-lg font-black text-slate-900 dark:text-white leading-snug">${escapeHtml(p.name)}</div>
-                <div class="mt-1 flex flex-wrap items-center gap-1.5">
-                  <span class="px-2 py-0.5 rounded-md bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-indigo-300 font-mono font-bold text-xs">${escapeHtml(p.symbol)}</span><span class="block text-xs text-slate-500 dark:text-slate-400">${escapeHtml(quoteLabel(p))}</span>
-                  <span class="text-xs font-bold px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300">${escapeHtml(p.actionLabel || "買進")}</span>
-                  ${p.sharesAssumed ? `<span class="text-xs font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 dark:bg-amber-500/20 dark:text-amber-300">預設${shares}股</span>` : ""}
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="text-lg font-black text-slate-900 dark:text-white leading-snug">${escapeHtml(g.name)}</span>
+                  <span class="px-2 py-0.5 rounded-md bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-indigo-300 font-mono font-bold text-xs">${escapeHtml(g.symbol)}</span>
+                  <span class="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 dark:bg-indigo-500/20 dark:text-indigo-300 font-bold text-xs">共 ${lotCount} 筆</span>
+                  ${g.anyAssumed ? `<span class="text-xs font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 dark:bg-amber-500/20 dark:text-amber-300">含預設股數</span>` : ""}
                 </div>
+                <span class="block text-xs text-slate-500 dark:text-slate-400 mt-1">${escapeHtml(quoteLabel(p))}</span>
               </td>
 
               <td class="py-4 px-3 text-right font-mono">
-                <div class="text-base font-black text-slate-900 dark:text-white">${shares.toLocaleString("zh-TW")} 股</div>
-                <div class="text-xs font-medium text-slate-500 dark:text-slate-400 mt-0.5">成本 ${fmtCurrency(shares * buy)}</div>
+                <div class="text-base font-black text-slate-900 dark:text-white">${g.totalShares.toLocaleString("zh-TW")} 股</div>
+                <div class="text-xs font-medium text-slate-500 dark:text-slate-400 mt-0.5">總成本 ${fmtCurrency(g.totalCost)}</div>
               </td>
 
               <td class="py-4 px-3 text-right font-mono text-base font-bold text-slate-800 dark:text-slate-200">
-                ${fmtPrice(buy)}
+                ${fmtPrice(g.avgBuyPrice)}
               </td>
 
               <td class="py-4 px-3 text-right">
@@ -1396,12 +1602,12 @@
                     step="0.05"
                     data-action="quick-price"
                     data-id="${escapeHtml(p.id)}"
-                    value="${cur}"
-                    title="點擊可直接修改現價"
+                    value="${g.currentPrice}"
+                    title="點擊可直接修改現價（同標的同步套用）"
                     class="w-28 text-right bg-slate-50 dark:bg-slate-950 border-2 border-slate-300 dark:border-slate-700 hover:border-indigo-500 focus:border-indigo-600 rounded-xl px-2.5 py-1.5 font-mono font-black text-base ${getTwColorClass(dayDiff)} focus:outline-none shadow-inner"
                   >
                 </div>
-                <div class="text-xs text-slate-500 dark:text-slate-400 font-mono mt-1">市值 ${fmtCurrency(shares * cur)}</div>
+                <div class="text-xs text-slate-500 dark:text-slate-400 font-mono mt-1">總市值 ${fmtCurrency(g.marketValue)}</div>
               </td>
 
               <td class="py-4 px-3 text-right font-mono">
@@ -1412,44 +1618,50 @@
               </td>
 
               <td class="py-4 px-3 text-right font-mono">
-                <div class="text-lg font-black ${getTwColorClass(pnl)}">${fmtSignedCurrency(pnl)}</div>
-                <div class="text-xs font-bold text-slate-500 dark:text-slate-400">${pnl > 0 ? "目前獲利" : (pnl < 0 ? "目前帳面虧損" : "持平")}</div>
+                <div class="text-lg font-black ${getTwColorClass(g.unrealizedPnl)}">${fmtSignedCurrency(g.unrealizedPnl)}</div>
+                <div class="text-xs font-bold text-slate-500 dark:text-slate-400">${g.unrealizedPnl > 0 ? "目前獲利" : (g.unrealizedPnl < 0 ? "目前帳面虧損" : "持平")}</div>
               </td>
 
               <td class="py-4 px-3 text-right font-mono">
-                <span class="inline-block px-3 py-1.5 rounded-xl font-black text-sm ${getTwBadgeClass(roi)}">
-                  ${fmtPct(roi)}
+                <span class="inline-block px-3 py-1.5 rounded-xl font-black text-sm ${getTwBadgeClass(g.avgRoi)}">
+                  ${fmtPct(g.avgRoi)}
                 </span>
               </td>
 
               <td class="py-4 px-4 whitespace-nowrap">
-                <div class="font-mono text-sm font-bold text-slate-700 dark:text-slate-300">📅 ${escapeHtml(p.tradeDate || "—")}</div>
+                <div class="font-mono text-sm font-bold text-slate-700 dark:text-slate-300" title="最新一筆買進日期">📅 ${escapeHtml(g.latestDate || "—")}</div>
                 ${targetHtml}
               </td>
 
               <td class="py-4 px-4 text-right whitespace-nowrap">
                 <div class="inline-flex flex-wrap items-center justify-end gap-1.5">
-                  <button type="button" data-action="lock-exit" data-id="${escapeHtml(p.id)}" class="px-3 py-2 rounded-xl text-xs font-bold bg-amber-100 hover:bg-amber-200 text-amber-950 dark:bg-amber-500/20 dark:hover:bg-amber-500/30 dark:text-amber-300 border border-amber-300 dark:border-amber-500/30 transition">
-                    鎖定出場
+                  <button type="button" data-action="toggle-group" data-group-key="${escapeHtml(g.key)}" class="px-3 py-2 rounded-xl text-xs font-bold ${isExpanded ? "bg-indigo-600 text-white" : "bg-indigo-50 hover:bg-indigo-100 text-indigo-800 dark:bg-indigo-500/20 dark:hover:bg-indigo-500/30 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30"} transition">
+                    ${isExpanded ? `▲ 收合 (${lotCount})` : `▼ 明細 (${lotCount})`}
                   </button>
-                  <button type="button" data-action="edit-pos" data-id="${escapeHtml(p.id)}" class="px-3 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 transition">
-                    編輯
-                  </button>
-                  <button type="button" data-action="delete-pos" data-id="${escapeHtml(p.id)}" class="px-2.5 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-rose-100 dark:bg-slate-800 dark:hover:bg-rose-900/60 text-slate-600 hover:text-rose-700 dark:text-slate-400 dark:hover:text-rose-300 border border-slate-300 dark:border-slate-700 transition">
-                    刪除
-                  </button>
+                  ${lotCount === 1 ? `
+                    <button type="button" data-action="lock-exit" data-id="${escapeHtml(p.id)}" class="px-3 py-2 rounded-xl text-xs font-bold bg-amber-100 hover:bg-amber-200 text-amber-950 dark:bg-amber-500/20 dark:hover:bg-amber-500/30 dark:text-amber-300 border border-amber-300 dark:border-amber-500/30 transition">
+                      鎖定出場
+                    </button>
+                    <button type="button" data-action="edit-pos" data-id="${escapeHtml(p.id)}" class="px-3 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 transition">
+                      編輯
+                    </button>
+                    <button type="button" data-action="delete-pos" data-id="${escapeHtml(p.id)}" class="px-2.5 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-rose-100 dark:bg-slate-800 dark:hover:bg-rose-900/60 text-slate-600 hover:text-rose-700 dark:text-slate-400 dark:hover:text-rose-300 border border-slate-300 dark:border-slate-700 transition">
+                      刪除
+                    </button>
+                  ` : ""}
                 </div>
               </td>
             </tr>
+            ${childRowsHtml}
           `;
         }).join("");
       }
 
-      // Render Exited Section (Mobile Cards + Desktop Table)
+      // Render Exited Section (Grouped by symbol as well)
       const exitedBody = document.getElementById("exitedTableBody");
       const exitedMobile = document.getElementById("exitedMobileCards");
 
-      if (exitedList.length === 0) {
+      if (exitedGroups.length === 0) {
         const emptyExitedHtml = `
           <div class="py-8 px-4 text-center text-slate-500 dark:text-slate-400 text-sm sm:text-base font-medium bg-white dark:bg-slate-900 rounded-2xl border-2 border-slate-200 dark:border-slate-800">
             目前沒有已出場固定標的。當您將上方標的點擊「鎖定出場」後，即會歸檔於此且不再隨大盤跳動。
@@ -1458,37 +1670,59 @@
         exitedMobile.innerHTML = emptyExitedHtml;
         exitedBody.innerHTML = `<tr><td colspan="8" class="py-10 text-center text-slate-500 dark:text-slate-400 text-base font-medium">目前沒有已出場固定標的。</td></tr>`;
       } else {
-        // 1. Mobile Cards for Exited Holdings
-        exitedMobile.innerHTML = exitedList.map(p => {
-          const shares = Number(p.shares) || 0;
-          const exitP = Number(p.exitPrice ?? p.currentPrice) || 0;
-          const hasBuy = p.buyPrice !== null && p.buyPrice !== undefined && p.buyPrice !== "" && Number(p.buyPrice) > 0;
-          const buy = hasBuy ? Number(p.buyPrice) : null;
+        exitedMobile.innerHTML = exitedGroups.map(g => {
+          const p = g.primaryItem;
+          const isExpanded = expandedGroups.has(g.key);
+          const lotCount = g.items.length;
+          const hasBuy = g.realizedPnl !== null;
 
-          const pnl = hasBuy ? (exitP - buy) * shares : null;
-          const roi = hasBuy ? ((exitP - buy) / buy) * 100 : null;
-          const proceeds = shares * exitP;
+          const childExitedHtml = g.items.map((lot, idx) => {
+            const lotSh = Number(lot.shares) || 0;
+            const lotExit = Number(lot.exitPrice ?? lot.currentPrice) || 0;
+            const lotHasBuy = lot.buyPrice !== null && lot.buyPrice !== undefined && Number(lot.buyPrice) > 0;
+            const lotBuy = lotHasBuy ? Number(lot.buyPrice) : null;
+            const lotPnl = lotHasBuy ? (lotExit - lotBuy) * lotSh : null;
+            return `
+              <div class="p-3 rounded-xl bg-slate-100/90 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="font-mono text-xs font-bold text-slate-700 dark:text-slate-300">#${idx + 1} 📅 ${escapeHtml(lot.exitDate || lot.tradeDate || "—")}</span>
+                  <span class="font-mono text-xs font-bold text-amber-700 dark:text-amber-300">出場價 ${fmtPrice(lotExit)} (${lotSh}股)</span>
+                </div>
+                <div class="flex items-center justify-between text-xs font-mono">
+                  <span>買價: ${lotHasBuy ? fmtPrice(lotBuy) : "未填"}</span>
+                  <span>損益: ${lotHasBuy ? fmtSignedCurrency(lotPnl) : "待補成本"}</span>
+                </div>
+                <div class="flex items-center justify-end gap-1.5 pt-1 border-t border-slate-200/70 dark:border-slate-800">
+                  <button type="button" data-action="reactivate-pos" data-id="${escapeHtml(lot.id)}" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-indigo-50 dark:bg-slate-800 text-indigo-800 dark:text-slate-200 border border-indigo-200 dark:border-slate-700">恢復追蹤</button>
+                  <button type="button" data-action="edit-pos" data-id="${escapeHtml(lot.id)}" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700">編輯</button>
+                  <button type="button" data-action="delete-pos" data-id="${escapeHtml(lot.id)}" class="px-2 py-1 rounded-lg text-xs font-bold bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-700">刪除</button>
+                </div>
+              </div>
+            `;
+          }).join("");
 
           return `
             <div class="bg-white dark:bg-slate-900/85 border-2 border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm space-y-3">
               <div class="flex items-start justify-between gap-2">
                 <div>
                   <div class="flex items-center gap-2 flex-wrap">
-                    <span class="text-lg font-black text-slate-800 dark:text-slate-200">${escapeHtml(p.name)}</span>
-                    <span class="px-2 py-0.5 rounded-md bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-400 font-mono font-bold text-xs">${escapeHtml(p.symbol)}</span><span class="block text-xs text-slate-500 dark:text-slate-400">${escapeHtml(quoteLabel(p))}</span>
+                    <span class="text-lg font-black text-slate-800 dark:text-slate-200">${escapeHtml(g.name)}</span>
+                    <span class="px-2 py-0.5 rounded-md bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-400 font-mono font-bold text-xs">${escapeHtml(g.symbol)}</span>
+                    <span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 dark:bg-amber-500/20 dark:text-amber-300 font-bold text-xs">共 ${lotCount} 筆</span>
                   </div>
+                  <span class="block text-xs text-slate-500 dark:text-slate-400 mt-0.5">${escapeHtml(quoteLabel(p))}</span>
                   <div class="mt-1 flex items-center gap-2">
                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-900 dark:bg-amber-500/15 dark:text-amber-300 border border-amber-300 dark:border-amber-500/30">
                       🔒 已出場固定
                     </span>
-                    <span class="font-mono text-xs font-semibold text-slate-500 dark:text-slate-400">📅 ${escapeHtml(p.exitDate || p.tradeDate || "—")}</span>
+                    <span class="font-mono text-xs font-semibold text-slate-500 dark:text-slate-400">📅 ${escapeHtml(g.latestDate || "—")}</span>
                   </div>
                 </div>
 
                 <div class="text-right shrink-0">
                   ${hasBuy
-                    ? `<span class="inline-block px-2.5 py-1 rounded-xl font-mono font-black text-sm ${getTwBadgeClass(roi)}">${fmtPct(roi)}</span>
-                       <div class="font-mono text-base font-black mt-1 ${getTwColorClass(pnl)}">${fmtSignedCurrency(pnl)}</div>`
+                    ? `<span class="inline-block px-2.5 py-1 rounded-xl font-mono font-black text-sm ${getTwBadgeClass(g.exitedRoi)}">${fmtPct(g.exitedRoi)}</span>
+                       <div class="font-mono text-base font-black mt-1 ${getTwColorClass(g.realizedPnl)}">${fmtSignedCurrency(g.realizedPnl)}</div>`
                     : `<button type="button" data-action="edit-pos" data-id="${escapeHtml(p.id)}" class="px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-500/15 text-xs font-bold text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30">+ 補填買價</button>`
                   }
                 </div>
@@ -1496,92 +1730,149 @@
 
               <div class="grid grid-cols-3 gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950/70 border border-slate-200/80 dark:border-slate-800/80">
                 <div>
-                  <div class="text-[11px] font-bold text-slate-500 dark:text-slate-400">出場股數</div>
-                  <div class="font-mono text-sm font-black text-slate-800 dark:text-slate-200 mt-0.5">${shares.toLocaleString("zh-TW")} 股</div>
+                  <div class="text-[11px] font-bold text-slate-500 dark:text-slate-400">出場總股數</div>
+                  <div class="font-mono text-sm font-black text-slate-800 dark:text-slate-200 mt-0.5">${g.totalShares.toLocaleString("zh-TW")} 股</div>
                 </div>
                 <div>
-                  <div class="text-[11px] font-bold text-slate-500 dark:text-slate-400">買進成本</div>
-                  <div class="font-mono text-sm font-bold text-slate-700 dark:text-slate-300 mt-0.5">${hasBuy ? fmtPrice(buy) : "未填"}</div>
+                  <div class="text-[11px] font-bold text-slate-500 dark:text-slate-400">平均買進成本</div>
+                  <div class="font-mono text-sm font-bold text-slate-700 dark:text-slate-300 mt-0.5">${g.avgBuyPrice !== null ? fmtPrice(g.avgBuyPrice) : "未填"}</div>
                 </div>
                 <div class="text-right">
-                  <div class="text-[11px] font-bold text-amber-700 dark:text-amber-400">固定出場價</div>
-                  <div class="font-mono text-sm font-black text-amber-700 dark:text-amber-300 mt-0.5">${fmtPrice(exitP)}</div>
+                  <div class="text-[11px] font-bold text-amber-700 dark:text-amber-400">平均出場價</div>
+                  <div class="font-mono text-sm font-black text-amber-700 dark:text-amber-300 mt-0.5">${fmtPrice(g.avgExitPrice)}</div>
                 </div>
               </div>
 
               <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
                 <div class="text-xs font-mono text-slate-500 dark:text-slate-400">
-                  回收總額 <b class="text-slate-800 dark:text-slate-200">${fmtCurrency(proceeds)}</b>
+                  回收總額 <b class="text-slate-800 dark:text-slate-200">${fmtCurrency(g.totalExitProceeds)}</b>
                 </div>
                 <div class="flex items-center gap-1.5 ml-auto">
-                  <button type="button" data-action="reactivate-pos" data-id="${escapeHtml(p.id)}" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-50 dark:bg-slate-800 text-indigo-800 dark:text-slate-200 border border-indigo-200 dark:border-slate-700">
-                    恢復追蹤
+                  <button type="button" data-action="toggle-group" data-group-key="${escapeHtml(g.key)}" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200">
+                    ${isExpanded ? "▲ 收合" : `▼ 明細 (${lotCount})`}
                   </button>
-                  <button type="button" data-action="edit-pos" data-id="${escapeHtml(p.id)}" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700">
-                    編輯
-                  </button>
-                  <button type="button" data-action="delete-pos" data-id="${escapeHtml(p.id)}" class="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-700">
-                    刪除
-                  </button>
+                  ${lotCount === 1 ? `
+                    <button type="button" data-action="reactivate-pos" data-id="${escapeHtml(p.id)}" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-50 dark:bg-slate-800 text-indigo-800 dark:text-slate-200 border border-indigo-200 dark:border-slate-700">
+                      恢復追蹤
+                    </button>
+                    <button type="button" data-action="edit-pos" data-id="${escapeHtml(p.id)}" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700">
+                      編輯
+                    </button>
+                    <button type="button" data-action="delete-pos" data-id="${escapeHtml(p.id)}" class="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-700">
+                      刪除
+                    </button>
+                  ` : ""}
                 </div>
+              </div>
+
+              <div class="${isExpanded ? "block" : "hidden"} pt-2 border-t-2 border-dashed border-slate-200 dark:border-slate-800 space-y-2">
+                ${childExitedHtml}
               </div>
             </div>
           `;
         }).join("");
 
-        // 2. Desktop Table for Exited Holdings
-        exitedBody.innerHTML = exitedList.map(p => {
-          const shares = Number(p.shares) || 0;
-          const exitP = Number(p.exitPrice ?? p.currentPrice) || 0;
-          const hasBuy = p.buyPrice !== null && p.buyPrice !== undefined && p.buyPrice !== "" && Number(p.buyPrice) > 0;
-          const buy = hasBuy ? Number(p.buyPrice) : null;
+        exitedBody.innerHTML = exitedGroups.map(g => {
+          const p = g.primaryItem;
+          const isExpanded = expandedGroups.has(g.key);
+          const lotCount = g.items.length;
+          const hasBuy = g.realizedPnl !== null;
 
-          const pnl = hasBuy ? (exitP - buy) * shares : null;
-          const roi = hasBuy ? ((exitP - buy) / buy) * 100 : null;
-          const proceeds = shares * exitP;
+          const childExitedRows = g.items.map((lot, idx) => {
+            const lotSh = Number(lot.shares) || 0;
+            const lotExit = Number(lot.exitPrice ?? lot.currentPrice) || 0;
+            const lotHasBuy = lot.buyPrice !== null && lot.buyPrice !== undefined && Number(lot.buyPrice) > 0;
+            const lotBuy = lotHasBuy ? Number(lot.buyPrice) : null;
+            const lotPnl = lotHasBuy ? (lotExit - lotBuy) * lotSh : null;
+            const lotRoi = lotHasBuy ? ((lotExit - lotBuy) / lotBuy) * 100 : null;
+            return `
+              <tr class="${isExpanded ? "" : "hidden"} bg-slate-50/90 dark:bg-slate-950/70 border-l-4 border-amber-500 text-sm transition">
+                <td class="py-3 pl-8 pr-4">
+                  <span class="px-2 py-0.5 rounded bg-amber-500/15 text-amber-800 dark:text-amber-300 font-mono text-xs font-bold">批次 #${idx + 1}</span>
+                  <span class="ml-1.5 text-xs text-slate-600 dark:text-slate-300 font-bold">${escapeHtml(lot.actionLabel || "出場")}</span>
+                </td>
+                <td class="py-3 px-3 font-mono text-xs text-slate-600 dark:text-slate-300">
+                  📅 ${escapeHtml(lot.exitDate || lot.tradeDate || "—")} ${escapeHtml(lot.tradeTime || "")}
+                </td>
+                <td class="py-3 px-3 text-right font-mono">
+                  <div class="font-bold text-slate-800 dark:text-slate-200">${lotSh.toLocaleString("zh-TW")} 股</div>
+                  <div class="text-xs text-slate-500">回收 ${fmtCurrency(lotSh * lotExit)}</div>
+                </td>
+                <td class="py-3 px-3 text-right font-mono">
+                  ${lotHasBuy ? fmtPrice(lotBuy) : `<button type="button" data-action="edit-pos" data-id="${escapeHtml(lot.id)}" class="px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-500/15 text-xs font-bold text-indigo-700 dark:text-indigo-300">+ 補填買價</button>`}
+                </td>
+                <td class="py-3 px-3 text-right font-mono font-bold text-amber-700 dark:text-amber-300">
+                  ${fmtPrice(lotExit)}
+                </td>
+                <td class="py-3 px-3 text-right font-mono font-bold ${lotHasBuy ? getTwColorClass(lotPnl) : "text-slate-400"}">
+                  ${lotHasBuy ? fmtSignedCurrency(lotPnl) : "待補成本"}
+                </td>
+                <td class="py-3 px-3 text-right font-mono">
+                  ${lotHasBuy ? `<span class="inline-block px-2.5 py-1 rounded-lg font-bold text-xs ${getTwBadgeClass(lotRoi)}">${fmtPct(lotRoi)}</span>` : "—"}
+                </td>
+                <td class="py-3 px-4 text-right whitespace-nowrap">
+                  <div class="inline-flex items-center justify-end gap-1.5">
+                    <button type="button" data-action="reactivate-pos" data-id="${escapeHtml(lot.id)}" class="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-indigo-50 dark:bg-slate-800 text-indigo-800 dark:text-slate-200 border border-indigo-200 dark:border-slate-700">恢復追蹤</button>
+                    <button type="button" data-action="edit-pos" data-id="${escapeHtml(lot.id)}" class="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700">編輯</button>
+                    <button type="button" data-action="delete-pos" data-id="${escapeHtml(lot.id)}" class="px-2 py-1.5 rounded-lg text-xs font-bold bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-700">刪除</button>
+                  </div>
+                </td>
+              </tr>
+            `;
+          }).join("");
 
           return `
             <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition">
               <td class="py-4 px-4">
-                <div class="text-lg font-black text-slate-800 dark:text-slate-200">${escapeHtml(p.name)}</div>
-                <span class="inline-block mt-1 px-2 py-0.5 rounded-md bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-400 font-mono font-bold text-xs">${escapeHtml(p.symbol)}</span><span class="block text-xs text-slate-500 dark:text-slate-400">${escapeHtml(quoteLabel(p))}</span>
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="text-lg font-black text-slate-800 dark:text-slate-200">${escapeHtml(g.name)}</span>
+                  <span class="px-2 py-0.5 rounded-md bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-400 font-mono font-bold text-xs">${escapeHtml(g.symbol)}</span>
+                  <span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 dark:bg-amber-500/20 dark:text-amber-300 font-bold text-xs">共 ${lotCount} 筆</span>
+                </div>
+                <span class="block text-xs text-slate-500 dark:text-slate-400 mt-1">${escapeHtml(quoteLabel(p))}</span>
               </td>
               <td class="py-4 px-3">
-                <div class="font-mono text-sm font-bold text-slate-700 dark:text-slate-300">📅 ${escapeHtml(p.exitDate || p.tradeDate || "—")}</div>
+                <div class="font-mono text-sm font-bold text-slate-700 dark:text-slate-300">📅 ${escapeHtml(g.latestDate || "—")}</div>
                 <span class="inline-flex items-center gap-1 mt-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-900 dark:bg-amber-500/15 dark:text-amber-300 border border-amber-300 dark:border-amber-500/30">
                   🔒 已出場固定
                 </span>
               </td>
               <td class="py-4 px-3 text-right font-mono">
-                <div class="text-base font-black text-slate-800 dark:text-slate-200">${shares.toLocaleString("zh-TW")} 股</div>
-                <div class="text-xs font-medium text-slate-500 dark:text-slate-400">回收 ${fmtCurrency(proceeds)}</div>
+                <div class="text-base font-black text-slate-800 dark:text-slate-200">${g.totalShares.toLocaleString("zh-TW")} 股</div>
+                <div class="text-xs font-medium text-slate-500 dark:text-slate-400">回收 ${fmtCurrency(g.totalExitProceeds)}</div>
               </td>
               <td class="py-4 px-3 text-right font-mono text-base font-bold">
-                ${hasBuy ? fmtPrice(buy) : `<button type="button" data-action="edit-pos" data-id="${escapeHtml(p.id)}" class="px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-500/15 text-xs font-bold text-indigo-700 dark:text-indigo-300 hover:underline border border-indigo-200 dark:border-indigo-500/30">+ 補填買價</button>`}
+                ${g.avgBuyPrice !== null ? fmtPrice(g.avgBuyPrice) : `<button type="button" data-action="edit-pos" data-id="${escapeHtml(p.id)}" class="px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-500/15 text-xs font-bold text-indigo-700 dark:text-indigo-300 hover:underline border border-indigo-200 dark:border-indigo-500/30">+ 補填買價</button>`}
               </td>
               <td class="py-4 px-3 text-right font-mono text-base font-black text-amber-700 dark:text-amber-300">
-                ${fmtPrice(exitP)}
+                ${fmtPrice(g.avgExitPrice)}
               </td>
-              <td class="py-4 px-3 text-right font-mono text-base font-black ${hasBuy ? getTwColorClass(pnl) : "text-slate-400"}">
-                ${hasBuy ? fmtSignedCurrency(pnl) : "待補成本"}
+              <td class="py-4 px-3 text-right font-mono text-base font-black ${hasBuy ? getTwColorClass(g.realizedPnl) : "text-slate-400"}">
+                ${hasBuy ? fmtSignedCurrency(g.realizedPnl) : "待補成本"}
               </td>
               <td class="py-4 px-3 text-right font-mono">
-                ${hasBuy ? `<span class="inline-block px-3 py-1.5 rounded-xl font-black text-sm ${getTwBadgeClass(roi)}">${fmtPct(roi)}</span>` : `<span class="text-sm text-slate-400">—</span>`}
+                ${hasBuy ? `<span class="inline-block px-3 py-1.5 rounded-xl font-black text-sm ${getTwBadgeClass(g.exitedRoi)}">${fmtPct(g.exitedRoi)}</span>` : `<span class="text-sm text-slate-400">—</span>`}
               </td>
               <td class="py-4 px-4 text-right whitespace-nowrap">
                 <div class="inline-flex flex-wrap items-center justify-end gap-1.5">
-                  <button type="button" data-action="reactivate-pos" data-id="${escapeHtml(p.id)}" class="px-3 py-2 rounded-xl text-xs font-bold bg-indigo-50 hover:bg-indigo-100 dark:bg-slate-800 dark:hover:bg-indigo-600/30 text-indigo-800 dark:text-slate-200 border border-indigo-200 dark:border-slate-700 transition">
-                    恢復追蹤
+                  <button type="button" data-action="toggle-group" data-group-key="${escapeHtml(g.key)}" class="px-3 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 transition">
+                    ${isExpanded ? `▲ 收合 (${lotCount})` : `▼ 明細 (${lotCount})`}
                   </button>
-                  <button type="button" data-action="edit-pos" data-id="${escapeHtml(p.id)}" class="px-3 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 transition">
-                    編輯
-                  </button>
-                  <button type="button" data-action="delete-pos" data-id="${escapeHtml(p.id)}" class="px-2.5 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-rose-100 dark:bg-slate-800 dark:hover:bg-rose-900/60 text-slate-600 hover:text-rose-700 dark:text-slate-400 dark:hover:text-rose-300 border border-slate-300 dark:border-slate-700 transition">
-                    刪除
-                  </button>
+                  ${lotCount === 1 ? `
+                    <button type="button" data-action="reactivate-pos" data-id="${escapeHtml(p.id)}" class="px-3 py-2 rounded-xl text-xs font-bold bg-indigo-50 hover:bg-indigo-100 dark:bg-slate-800 dark:hover:bg-indigo-600/30 text-indigo-800 dark:text-slate-200 border border-indigo-200 dark:border-slate-700 transition">
+                      恢復追蹤
+                    </button>
+                    <button type="button" data-action="edit-pos" data-id="${escapeHtml(p.id)}" class="px-3 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 transition">
+                      編輯
+                    </button>
+                    <button type="button" data-action="delete-pos" data-id="${escapeHtml(p.id)}" class="px-2.5 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-rose-100 dark:bg-slate-800 dark:hover:bg-rose-900/60 text-slate-600 hover:text-rose-700 dark:text-slate-400 dark:hover:text-rose-300 border border-slate-300 dark:border-slate-700 transition">
+                      刪除
+                    </button>
+                  ` : ""}
                 </div>
               </td>
             </tr>
+            ${childExitedRows}
           `;
         }).join("");
       }
@@ -1601,19 +1892,13 @@
       if (typeof Chart === "undefined") { showToast("圖表元件載入失敗，請檢查網路後重新整理"); return; }
       const positions = portfolioData.positions || [];
       const activeList = positions.filter(p => p.status === "active" && p.trackLive !== false);
+      const activeGroups = groupPositionsBySymbol(activeList, "active");
       const axisColor = isDarkMode ? "#cbd5e1" : "#334155";
       const gridColor = isDarkMode ? "rgba(51,65,85,0.35)" : "rgba(203,213,225,0.6)";
       const isMobile = window.innerWidth < 640;
 
-      const roiCandidates = positions.filter(p => p.buyPrice && Number(p.buyPrice) > 0);
-      const roiLabels = roiCandidates.map(p => `${p.name}(${p.symbol})`);
-      const roiValues = roiCandidates.map(p => {
-        const buy = Number(p.buyPrice);
-        const refPrice = (p.status === "exited" || p.trackLive === false)
-          ? Number(p.exitPrice ?? p.currentPrice)
-          : Number(p.currentPrice);
-        return Number((((refPrice - buy) / buy) * 100).toFixed(2));
-      });
+      const roiLabels = activeGroups.map(g => `${g.name}(${g.symbol})`);
+      const roiValues = activeGroups.map(g => Number((g.avgRoi || 0).toFixed(2)));
       const roiColors = roiValues.map(v => v >= 0 ? "rgba(220, 38, 38, 0.85)" : "rgba(5, 150, 105, 0.85)");
 
       const roiCtx = document.getElementById("roiChartCanvas").getContext("2d");
@@ -1623,7 +1908,7 @@
         data: {
           labels: roiLabels,
           datasets: [{
-            label: "報酬率 (%)",
+            label: "平均報酬率 (%)",
             data: roiValues,
             backgroundColor: roiColors,
             borderRadius: 8
@@ -1649,10 +1934,10 @@
         }
       });
 
-      const allocLabels = activeList.map(p => `${p.name} (${p.symbol})`);
-      const allocData = activeList.map(p => Math.round((Number(p.shares) || 0) * (Number(p.currentPrice) || 0)));
+      const allocLabels = activeGroups.map(g => `${g.name} (${g.symbol})`);
+      const allocData = activeGroups.map(g => Math.round(g.marketValue));
       const palette = [
-        "#4f46e5", "#e11d48", "#d97706", "#059669", "#2563eb", "#7c3aed", "#0d9488", "#db2777"
+        "#4f46e5", "#e11d48", "#d97706", "#059669", "#2563eb", "#7c3aed", "#0d9488", "#db2777", "#0284c7", "#ca8a04"
       ];
 
       const allocCtx = document.getElementById("allocationChartCanvas").getContext("2d");
@@ -1708,7 +1993,7 @@
     }
 
     // =========================================================================
-    // 5. MULTI-SOURCE LIVE QUOTE SYNC (Yahoo Multi-Proxy + TWSE MIS Batch + FinMind)
+    // 5. MULTI-SOURCE LIVE QUOTE SYNC (Deduplicated by Symbol + Batch Fallback)
     // =========================================================================
     async function fetchWithTimeout(url, timeoutMs = 6500) {
       const controller = new AbortController();
@@ -1813,9 +2098,7 @@
             });
           }
           if (map.size > 0) break;
-        } catch (err) {
-          // Try next proxy
-        }
+        } catch (err) {}
       }
       return map;
     }
@@ -1840,13 +2123,10 @@
             const raw = await fetchWithTimeout(ep, 5500);
             const parsed = extractYahooQuote(raw);
             if (parsed) return parsed;
-          } catch (err) {
-            // Try next proxy
-          }
+          } catch (err) {}
         }
       }
 
-      // Direct CORS-native fallback: FinMind TaiwanStockPrice API (No third-party CORS proxy needed!)
       try {
         const start = new Date(Date.now() - 14 * 86400 * 1000).toISOString().slice(0, 10);
         const fmUrl = `https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockPrice&data_id=${encodeURIComponent(symbol)}&start_date=${start}`;
@@ -1866,9 +2146,7 @@
             quoteSource: 'FinMind TaiwanStockPrice'
           };
         }
-      } catch (err) {
-        // Ignore and return null
-      }
+      } catch (err) {}
 
       return null;
     }
@@ -1884,38 +2162,30 @@
       const activeList = portfolioData.positions.filter(p => p.status === 'active' && p.trackLive);
       let updatedCount = 0;
       try {
-        const snapshots = activeList.map(pos => ({
-          pos,
-          requestedSymbol: pos.symbol,
-          requestedMarket: pos.market,
-          requestedPrice: pos.currentPrice
-        }));
+        // Deduplicate network requests by market:symbol while snapshotting each individual lot
+        const symbolGroups = new Map();
+        for (const pos of activeList) {
+          const key = `${pos.market}:${pos.symbol}`;
+          if (!symbolGroups.has(key)) {
+            symbolGroups.set(key, { symbol: pos.symbol, market: pos.market, snapshots: [] });
+          }
+          symbolGroups.get(key).snapshots.push({
+            pos,
+            requestedSymbol: pos.symbol,
+            requestedMarket: pos.market,
+            requestedPrice: pos.currentPrice
+          });
+        }
 
-        // Step 1: Try per-stock Yahoo multi-proxy + FinMind direct fallback concurrently
-        const unresolved = [];
-        await Promise.all(snapshots.map(async item => {
-          const { pos, requestedSymbol, requestedMarket, requestedPrice } = item;
-          const quote = await fetchSingleStockQuoteWithFallback(requestedSymbol, requestedMarket);
+        const unresolvedGroups = [];
+        await Promise.all([...symbolGroups.values()].map(async grp => {
+          const quote = await fetchSingleStockQuoteWithFallback(grp.symbol, grp.market);
           if (!quote) {
-            unresolved.push(item);
+            unresolvedGroups.push(grp);
             return;
           }
-          if (!portfolioData.positions.includes(pos) || pos.status !== 'active' || !pos.trackLive || pos.symbol !== requestedSymbol || pos.market !== requestedMarket || pos.currentPrice !== requestedPrice) return;
-          lastFlashMap[pos.id] = quote.price >= pos.currentPrice ? 'up' : 'down';
-          pos.currentPrice = quote.price;
-          if (Number.isFinite(quote.prevClose) && quote.prevClose > 0) pos.prevClose = quote.prevClose;
-          pos.quoteTime = quote.quoteTime;
-          pos.quoteSource = quote.quoteSource;
-          updatedCount++;
-        }));
-
-        // Step 2: If any positions failed Step 1, try TWSE/TPEx MIS batch lookup
-        if (unresolved.length > 0) {
-          const batchMap = await fetchTwseMisBatchQuotes(unresolved.map(u => u.pos));
-          for (const item of unresolved) {
+          for (const item of grp.snapshots) {
             const { pos, requestedSymbol, requestedMarket, requestedPrice } = item;
-            const quote = batchMap.get(requestedSymbol);
-            if (!quote) continue;
             if (!portfolioData.positions.includes(pos) || pos.status !== 'active' || !pos.trackLive || pos.symbol !== requestedSymbol || pos.market !== requestedMarket || pos.currentPrice !== requestedPrice) continue;
             lastFlashMap[pos.id] = quote.price >= pos.currentPrice ? 'up' : 'down';
             pos.currentPrice = quote.price;
@@ -1923,6 +2193,25 @@
             pos.quoteTime = quote.quoteTime;
             pos.quoteSource = quote.quoteSource;
             updatedCount++;
+          }
+        }));
+
+        if (unresolvedGroups.length > 0) {
+          const repPositions = unresolvedGroups.map(g => ({ symbol: g.symbol, market: g.market }));
+          const batchMap = await fetchTwseMisBatchQuotes(repPositions);
+          for (const grp of unresolvedGroups) {
+            const quote = batchMap.get(grp.symbol);
+            if (!quote) continue;
+            for (const item of grp.snapshots) {
+              const { pos, requestedSymbol, requestedMarket, requestedPrice } = item;
+              if (!portfolioData.positions.includes(pos) || pos.status !== 'active' || !pos.trackLive || pos.symbol !== requestedSymbol || pos.market !== requestedMarket || pos.currentPrice !== requestedPrice) continue;
+              lastFlashMap[pos.id] = quote.price >= pos.currentPrice ? 'up' : 'down';
+              pos.currentPrice = quote.price;
+              if (Number.isFinite(quote.prevClose) && quote.prevClose > 0) pos.prevClose = quote.prevClose;
+              pos.quoteTime = quote.quoteTime;
+              pos.quoteSource = quote.quoteSource;
+              updatedCount++;
+            }
           }
         }
 
@@ -1950,17 +2239,37 @@
       const id = input.dataset.id;
       const val = parseFloat(input.value);
       if (!Number.isFinite(val) || val <= 0) return;
-      const pos = portfolioData.positions.find(p => p.id === id);
-      if (pos) {
-        lastFlashMap[id] = val >= pos.currentPrice ? "up" : "down";
-        pos.currentPrice = val;
-        pos.quoteSource = "manual";
-        pos.quoteTime = null;
+      const targetPos = portfolioData.positions.find(p => p.id === id);
+      if (targetPos) {
+        // Update all active lots of the same symbol & market so aggregated and child rows stay in sync
+        portfolioData.positions.forEach(p => {
+          if (p.status === "active" && p.trackLive !== false && p.symbol === targetPos.symbol && p.market === targetPos.market) {
+            lastFlashMap[p.id] = val >= p.currentPrice ? "up" : "down";
+            p.currentPrice = val;
+            p.quoteSource = "manual";
+            p.quoteTime = null;
+          }
+        });
         document.getElementById("statusText").textContent = "已手動修改價格，非網路報價";
         savePortfolioState();
         renderAll();
-        showToast(`已更新 ${pos.name}(${pos.symbol}) 現價為 $${val}`);
+        showToast(`已同步更新 ${targetPos.name}(${targetPos.symbol}) 現價為 $${val}`);
       }
+    }
+
+    function toggleAllGroups() {
+      const activeList = (portfolioData.positions || []).filter(p => p.status === "active" && p.trackLive !== false);
+      const activeGroups = groupPositionsBySymbol(activeList, "active");
+      const allExpanded = activeGroups.length > 0 && activeGroups.every(g => expandedGroups.has(g.key));
+      const btn = document.getElementById("btnToggleAllGroups");
+      if (allExpanded) {
+        activeGroups.forEach(g => expandedGroups.delete(g.key));
+        if (btn) btn.textContent = "展開全部明細";
+      } else {
+        activeGroups.forEach(g => expandedGroups.add(g.key));
+        if (btn) btn.textContent = "收合全部明細";
+      }
+      renderTables();
     }
 
     function initEvents() {
@@ -1968,6 +2277,8 @@
       document.getElementById("btnLiveFetch").addEventListener("click", syncNetworkQuotes);
       document.getElementById("btnOpenAddModal").addEventListener("click", () => openPositionModal(null));
       document.getElementById("btnQuickJumpJson").addEventListener("click", () => switchMainTab("tab-json"));
+      const btnToggleAll = document.getElementById("btnToggleAllGroups");
+      if (btnToggleAll) btnToggleAll.addEventListener("click", toggleAllGroups);
 
       document.querySelectorAll(".main-tab-btn").forEach(btn => {
         btn.addEventListener("click", () => {
@@ -1994,7 +2305,6 @@
         renderTables();
       });
 
-      // Bind price change & button actions on both Desktop Tables and Mobile Card containers
       document.getElementById("activeTableBody").addEventListener("change", handleQuickPriceChange);
       document.getElementById("activeMobileCards").addEventListener("change", handleQuickPriceChange);
 
@@ -2050,6 +2360,18 @@
       const btn = e.target.closest("button[data-action]");
       if (!btn) return;
       const action = btn.dataset.action;
+
+      if (action === "toggle-group") {
+        const gKey = btn.dataset.groupKey;
+        if (expandedGroups.has(gKey)) {
+          expandedGroups.delete(gKey);
+        } else {
+          expandedGroups.add(gKey);
+        }
+        renderTables();
+        return;
+      }
+
       const id = btn.dataset.id;
       const pos = portfolioData.positions.find(p => p.id === id);
       if (!pos) return;
