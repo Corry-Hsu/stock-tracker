@@ -100,3 +100,69 @@ test('runtime dates are dynamic and no random prices remain',()=>{
   assert.equal(a.element('formTradeDate').value,a.run('taipeiNow().slice(0,10)'));
   assert.ok(!source.includes('Math.random'));
 });
+
+test('falls back to secondary Yahoo proxy or FinMind when primary AllOrigins proxy fails', async () => {
+  const a = app(async url => {
+    // Primary allorigins/get fails
+    if (url.includes('api.allorigins.win/get')) throw Error('AllOrigins 522 timeout');
+    // Secondary codetabs proxy succeeds for 2330.TW
+    if (url.includes('api.codetabs.com') && decodeURIComponent(url).includes('2330.TW')) {
+      return {
+        ok: true,
+        json: async () => ({
+          chart: {
+            result: [{
+              meta: { regularMarketPrice: 2450, regularMarketTime: 1793152000, previousClose: 2400 }
+            }]
+          }
+        })
+      };
+    }
+    // FinMind direct CORS API succeeds for 1101
+    if (url.includes('api.finmindtrade.com') && url.includes('data_id=1101')) {
+      return {
+        ok: true,
+        json: async () => ({
+          data: [
+            { date: '2026-10-26', close: 27.5, spread: 0.2 },
+            { date: '2026-10-27', close: 28.6, spread: 1.1 }
+          ]
+        })
+      };
+    }
+    throw Error('offline');
+  });
+  await a.run('syncNetworkQuotes()');
+  const tsmc = a.run('portfolioData.positions.find(p => p.symbol === "2330" && p.status === "active")');
+  const tcc = a.run('portfolioData.positions.find(p => p.symbol === "1101" && p.status === "active")');
+  assert.equal(tsmc.currentPrice, 2450);
+  assert.equal(tsmc.prevClose, 2400);
+  assert.equal(tcc.currentPrice, 28.6);
+  assert.equal(tcc.prevClose, 27.5);
+  assert.match(a.run('quoteLabel(portfolioData.positions.find(p => p.symbol === "1101"))'), /FinMind/);
+});
+
+test('falls back to TWSE MIS batch endpoint when per-stock Yahoo and FinMind fail', async () => {
+  const a = app(async url => {
+    if (decodeURIComponent(url).includes('mis.twse.com.tw/stock/api/getStockInfo.jsp')) {
+      return {
+        ok: true,
+        json: async () => ({
+          msgArray: [
+            { c: '3231', z: '196.50', y: '190.00', tlong: '1793153000000' },
+            { c: '8021', z: '-', b: '445.00_444.50', a: '446.00_446.50', y: '433.00', tlong: '1793153000000' }
+          ]
+        })
+      };
+    }
+    throw Error('timeout');
+  });
+  await a.run('syncNetworkQuotes()');
+  const wistron = a.run('portfolioData.positions.find(p => p.symbol === "3231")');
+  const topoint = a.run('portfolioData.positions.find(p => p.symbol === "8021")');
+  assert.equal(wistron.currentPrice, 196.5);
+  assert.equal(wistron.prevClose, 190);
+  assert.equal(topoint.currentPrice, 445);
+  assert.equal(topoint.prevClose, 433);
+  assert.match(a.run('quoteLabel(portfolioData.positions.find(p => p.symbol === "3231"))'), /證交所/);
+});

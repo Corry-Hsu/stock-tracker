@@ -1505,8 +1505,16 @@
       if (p.status === 'exited') return '已出場：固定出場價格';
       if (p.quoteSource === 'manual') return '手動輸入價格（非網路報價）';
       const date = new Date(p.quoteTime);
-      if (p.quoteSource === 'Yahoo Finance via AllOrigins' && Number.isFinite(date.getTime())) {
-        return 'Yahoo（可能延遲） ' + date.toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false });
+      const hasValidDate = Number.isFinite(date.getTime());
+      const timeStr = hasValidDate ? date.toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false }) : '';
+      if (p.quoteSource && p.quoteSource.startsWith('Yahoo') && hasValidDate) {
+        return 'Yahoo（可能延遲） ' + timeStr;
+      }
+      if (p.quoteSource && p.quoteSource.startsWith('TWSE') && hasValidDate) {
+        return '證交所/櫃買 ' + timeStr;
+      }
+      if (p.quoteSource && p.quoteSource.startsWith('FinMind') && hasValidDate) {
+        return 'FinMind 收盤 ' + timeStr;
       }
       return '儲存價格（尚無網路報價時間）';
     }
@@ -1520,8 +1528,171 @@
     }
 
     // =========================================================================
-    // 5. LIVE QUOTE SYNC & MARKET SIMULATION
+    // 5. MULTI-SOURCE LIVE QUOTE SYNC (Yahoo Multi-Proxy + TWSE MIS Batch + FinMind)
     // =========================================================================
+    async function fetchWithTimeout(url, timeoutMs = 6500) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        const res = await fetch(url, { signal: controller.signal });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return await res.json();
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
+    function parseProxyJson(payload) {
+      if (!payload || typeof payload !== 'object') return null;
+      if (typeof payload.contents === 'string') {
+        try { return JSON.parse(payload.contents); } catch (e) { return null; }
+      }
+      return payload;
+    }
+
+    function extractYahooQuote(rawPayload) {
+      const data = parseProxyJson(rawPayload);
+      const result = data?.chart?.result?.[0];
+      const meta = result?.meta;
+      if (!meta) return null;
+      let price = Number(meta.regularMarketPrice);
+      if (!Number.isFinite(price) || price <= 0) {
+        const closes = result?.indicators?.quote?.[0]?.close;
+        if (Array.isArray(closes)) {
+          for (let i = closes.length - 1; i >= 0; i--) {
+            if (Number.isFinite(closes[i]) && closes[i] > 0) {
+              price = Number(closes[i]);
+              break;
+            }
+          }
+        }
+      }
+      const mktTime = Number(meta.regularMarketTime);
+      if (!Number.isFinite(price) || price <= 0 || !Number.isFinite(mktTime) || mktTime <= 0) return null;
+      const prevCandidate = Number(meta.previousClose ?? meta.chartPreviousClose);
+      const prevClose = (Number.isFinite(prevCandidate) && prevCandidate > 0) ? prevCandidate : null;
+      return {
+        price,
+        prevClose,
+        quoteTime: new Date(mktTime * 1000).toISOString(),
+        quoteSource: 'Yahoo Finance via AllOrigins'
+      };
+    }
+
+    function parseTwseBestPrice(sideStr) {
+      if (typeof sideStr !== 'string' || !sideStr) return null;
+      for (const token of sideStr.split('_')) {
+        const v = parseFloat(token);
+        if (Number.isFinite(v) && v > 0) return v;
+      }
+      return null;
+    }
+
+    async function fetchTwseMisBatchQuotes(positions) {
+      const map = new Map();
+      if (!positions || positions.length === 0) return map;
+      const exCh = positions.map(p => (p.market === 'TPEX' ? 'otc_' : 'tse_') + p.symbol + '.tw').join('|');
+      const misUrl = 'https://mis.twse.com.tw/stock/api/getStockInfo.jsp?json=1&delay=0&ex_ch=' + encodeURIComponent(exCh);
+      const endpoints = [
+        'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(misUrl),
+        'https://corsproxy.io/?url=' + encodeURIComponent(misUrl),
+        'https://api.allorigins.win/raw?url=' + encodeURIComponent(misUrl),
+        'https://api.allorigins.win/get?url=' + encodeURIComponent(misUrl)
+      ];
+      for (const ep of endpoints) {
+        try {
+          const raw = await fetchWithTimeout(ep, 6000);
+          const data = parseProxyJson(raw);
+          if (!data || !Array.isArray(data.msgArray)) continue;
+          for (const item of data.msgArray) {
+            const sym = String(item.c || '').trim().toUpperCase();
+            if (!sym) continue;
+            const zPrice = parseFloat(item.z);
+            const prevY = parseFloat(item.y);
+            const bidAsk = parseTwseBestPrice(item.b) ?? parseTwseBestPrice(item.a);
+            const price = (Number.isFinite(zPrice) && zPrice > 0)
+              ? zPrice
+              : ((Number.isFinite(bidAsk) && bidAsk > 0) ? bidAsk : ((Number.isFinite(prevY) && prevY > 0) ? prevY : null));
+            if (!Number.isFinite(price) || price <= 0) continue;
+            const prevClose = (Number.isFinite(prevY) && prevY > 0) ? prevY : null;
+            let quoteTime = new Date().toISOString();
+            const tlong = Number(item.tlong);
+            if (Number.isFinite(tlong) && tlong > 0) {
+              quoteTime = new Date(tlong).toISOString();
+            } else if (item.d && item.t && String(item.d).length === 8) {
+              const dStr = String(item.d);
+              const isoTry = `${dStr.slice(0,4)}-${dStr.slice(4,6)}-${dStr.slice(6,8)}T${item.t}+08:00`;
+              const dt = new Date(isoTry);
+              if (Number.isFinite(dt.getTime())) quoteTime = dt.toISOString();
+            }
+            map.set(sym, {
+              price,
+              prevClose,
+              quoteTime,
+              quoteSource: 'TWSE MIS'
+            });
+          }
+          if (map.size > 0) break;
+        } catch (err) {
+          // Try next proxy
+        }
+      }
+      return map;
+    }
+
+    async function fetchSingleStockQuoteWithFallback(symbol, market) {
+      const primarySuffix = market === 'TPEX' ? '.TWO' : '.TW';
+      const altSuffix = market === 'TPEX' ? '.TW' : '.TWO';
+      const tickers = [symbol + primarySuffix, symbol + altSuffix];
+
+      for (const ticker of tickers) {
+        const yUrl1 = 'https://query1.finance.yahoo.com/v8/finance/chart/' + encodeURIComponent(ticker) + '?interval=1d&range=5d';
+        const yUrl2 = 'https://query2.finance.yahoo.com/v8/finance/chart/' + encodeURIComponent(ticker) + '?interval=1d&range=5d';
+        const proxyEndpoints = [
+          'https://api.allorigins.win/get?url=' + encodeURIComponent(yUrl1),
+          'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(yUrl1),
+          'https://corsproxy.io/?url=' + encodeURIComponent(yUrl1),
+          'https://api.allorigins.win/raw?url=' + encodeURIComponent(yUrl2),
+          'https://thingproxy.freeboard.io/fetch/' + yUrl1
+        ];
+        for (const ep of proxyEndpoints) {
+          try {
+            const raw = await fetchWithTimeout(ep, 5500);
+            const parsed = extractYahooQuote(raw);
+            if (parsed) return parsed;
+          } catch (err) {
+            // Try next proxy
+          }
+        }
+      }
+
+      // Direct CORS-native fallback: FinMind TaiwanStockPrice API (No third-party CORS proxy needed!)
+      try {
+        const start = new Date(Date.now() - 14 * 86400 * 1000).toISOString().slice(0, 10);
+        const fmUrl = `https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockPrice&data_id=${encodeURIComponent(symbol)}&start_date=${start}`;
+        const fmData = await fetchWithTimeout(fmUrl, 6000);
+        const rows = Array.isArray(fmData?.data) ? fmData.data.filter(r => Number(r.close) > 0) : [];
+        if (rows.length > 0) {
+          const latest = rows[rows.length - 1];
+          const price = Number(latest.close);
+          const spread = Number(latest.spread || 0);
+          const prevFromRow = rows.length >= 2 ? Number(rows[rows.length - 2].close) : (price - spread);
+          const prevClose = (Number.isFinite(prevFromRow) && prevFromRow > 0) ? prevFromRow : null;
+          const dt = new Date(`${latest.date}T13:30:00+08:00`);
+          return {
+            price,
+            prevClose,
+            quoteTime: Number.isFinite(dt.getTime()) ? dt.toISOString() : new Date().toISOString(),
+            quoteSource: 'FinMind TaiwanStockPrice'
+          };
+        }
+      } catch (err) {
+        // Ignore and return null
+      }
+
+      return null;
+    }
+
     async function syncNetworkQuotes() {
       const btn = document.getElementById('btnLiveFetch');
       if (btn.disabled) return;
@@ -1529,44 +1700,58 @@
       const statusText = document.getElementById('statusText');
       btn.disabled = true;
       icon.classList.add('animate-spin');
-      statusText.textContent = '正在取得 Yahoo 報價（可能延遲）...';
+      statusText.textContent = '正在取得台股最新報價（多來源自動切換中）...';
       const activeList = portfolioData.positions.filter(p => p.status === 'active' && p.trackLive);
       let updatedCount = 0;
       try {
-        await Promise.all(activeList.map(async pos => {
-          const requestedSymbol = pos.symbol;
-          const requestedMarket = pos.market;
-          const requestedPrice = pos.currentPrice;
-          const controller = new AbortController();
-          const timer = setTimeout(() => controller.abort(), 8000);
-          try {
-            const ticker = pos.symbol + (pos.market === 'TPEX' ? '.TWO' : '.TW');
-            const url = 'https://query1.finance.yahoo.com/v8/finance/chart/' + encodeURIComponent(ticker) + '?interval=1d&range=1d';
-            const res = await fetch('https://api.allorigins.win/get?url=' + encodeURIComponent(url), { signal: controller.signal });
-            if (!res.ok) throw new Error('HTTP ' + res.status);
-            const wrapper = await res.json();
-            const meta = JSON.parse(wrapper.contents)?.chart?.result?.[0]?.meta;
-            const price = meta?.regularMarketPrice;
-            if (!Number.isFinite(price) || price <= 0 || !Number.isFinite(meta.regularMarketTime)) throw new Error('報價無效');
-            // User may edit, exit, delete, or import while the request is pending.
-            if (!portfolioData.positions.includes(pos) || pos.status !== 'active' || !pos.trackLive || pos.symbol !== requestedSymbol || pos.market !== requestedMarket || pos.currentPrice !== requestedPrice) return;
-            lastFlashMap[pos.id] = price >= pos.currentPrice ? 'up' : 'down';
-            pos.currentPrice = price;
-            const prev = meta.previousClose ?? meta.chartPreviousClose;
-            if (Number.isFinite(prev) && prev > 0) pos.prevClose = prev;
-            pos.quoteTime = new Date(meta.regularMarketTime * 1000).toISOString();
-            pos.quoteSource = 'Yahoo Finance via AllOrigins';
-            updatedCount++;
-          } catch (err) {
-            // Keep the previously stored price and timestamp on any failure.
-          } finally { clearTimeout(timer); }
+        const snapshots = activeList.map(pos => ({
+          pos,
+          requestedSymbol: pos.symbol,
+          requestedMarket: pos.market,
+          requestedPrice: pos.currentPrice
         }));
+
+        // Step 1: Try per-stock Yahoo multi-proxy + FinMind direct fallback concurrently
+        const unresolved = [];
+        await Promise.all(snapshots.map(async item => {
+          const { pos, requestedSymbol, requestedMarket, requestedPrice } = item;
+          const quote = await fetchSingleStockQuoteWithFallback(requestedSymbol, requestedMarket);
+          if (!quote) {
+            unresolved.push(item);
+            return;
+          }
+          if (!portfolioData.positions.includes(pos) || pos.status !== 'active' || !pos.trackLive || pos.symbol !== requestedSymbol || pos.market !== requestedMarket || pos.currentPrice !== requestedPrice) return;
+          lastFlashMap[pos.id] = quote.price >= pos.currentPrice ? 'up' : 'down';
+          pos.currentPrice = quote.price;
+          if (Number.isFinite(quote.prevClose) && quote.prevClose > 0) pos.prevClose = quote.prevClose;
+          pos.quoteTime = quote.quoteTime;
+          pos.quoteSource = quote.quoteSource;
+          updatedCount++;
+        }));
+
+        // Step 2: If any positions failed Step 1, try TWSE/TPEx MIS batch lookup
+        if (unresolved.length > 0) {
+          const batchMap = await fetchTwseMisBatchQuotes(unresolved.map(u => u.pos));
+          for (const item of unresolved) {
+            const { pos, requestedSymbol, requestedMarket, requestedPrice } = item;
+            const quote = batchMap.get(requestedSymbol);
+            if (!quote) continue;
+            if (!portfolioData.positions.includes(pos) || pos.status !== 'active' || !pos.trackLive || pos.symbol !== requestedSymbol || pos.market !== requestedMarket || pos.currentPrice !== requestedPrice) continue;
+            lastFlashMap[pos.id] = quote.price >= pos.currentPrice ? 'up' : 'down';
+            pos.currentPrice = quote.price;
+            if (Number.isFinite(quote.prevClose) && quote.prevClose > 0) pos.prevClose = quote.prevClose;
+            pos.quoteTime = quote.quoteTime;
+            pos.quoteSource = quote.quoteSource;
+            updatedCount++;
+          }
+        }
+
         if (updatedCount > 0) {
           portfolioData.lastUpdated = taipeiNow();
           savePortfolioState();
         }
         statusText.textContent = activeList.length === 0 ? '沒有需要同步的持倉' : updatedCount > 0
-          ? '已同步 ' + updatedCount + '/' + activeList.length + ' 筆 Yahoo 報價（可能延遲）；其餘保留原價'
+          ? '已同步 ' + updatedCount + '/' + activeList.length + ' 筆網路報價（可能延遲）；其餘保留原價'
           : '同步失敗：保留原價格與時間，未取得新報價';
         showToast(statusText.textContent);
         renderAll();
