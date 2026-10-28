@@ -26,7 +26,7 @@ function app(fetch = async () => { throw Error('offline'); }) {
 test('embedded fallback and deployed JSON agree and validate', () => {
   const a=app();
   assert.deepEqual(JSON.parse(a.run('JSON.stringify(DEFAULT_PORTFOLIO_JSON)')), seed);
-  assert.equal(a.run('validatePortfolio(portfolioData).positions.length'),9);
+  assert.equal(a.run('validatePortfolio(portfolioData).positions.length'),18);
 });
 test('reject malformed holdings before applying data', () => {
   const a=app();
@@ -52,9 +52,9 @@ test('partial success uses daily previous close, records quote time and leaves e
   await a.run('syncNetworkQuotes()');
   assert.equal(a.run('portfolioData.positions[0].currentPrice'),3200);
   assert.equal(a.run('portfolioData.positions[0].prevClose'),3100);
-  assert.equal(a.run('portfolioData.positions[1].currentPrice'),1115);
+  assert.equal(a.run('portfolioData.positions[1].currentPrice'),1155);
   assert.equal(a.run('JSON.stringify(portfolioData.positions.filter(p=>p.status==="exited"))'),exited);
-  assert.match(a.element('statusText').textContent,/1\/7/);
+  assert.match(a.element('statusText').textContent,/1\/16/);
   assert.match(a.run('quoteLabel(portfolioData.positions[0])'),/Yahoo/);
 });
 test('invalid payload never overwrites a stored price', async()=>{
@@ -67,7 +67,7 @@ test('exiting a position while its quote is in flight preserves it', async()=>{
     return {ok:true,json:async()=>({contents:JSON.stringify({chart:{result:[{meta:{regularMarketPrice:3400,regularMarketTime:1793151000}}]}})})};
   });
   await a.run('syncNetworkQuotes()');
-  assert.equal(a.run('portfolioData.positions[0].currentPrice'),3130);
+  assert.equal(a.run('portfolioData.positions[0].currentPrice'),3195);
   assert.equal(a.run('portfolioData.positions[0].exitPrice'),3333);
 });
 test('KPI matches sum of the active positions and excludes unknown exited costs',()=>{

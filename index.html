@@ -341,7 +341,7 @@
           <span class="text-lg sm:text-xl shrink-0">📌</span>
           <div class="leading-relaxed">
             <span class="font-black text-indigo-950 dark:text-white">貼心提示：</span>
-            未特別註明股數之買進標的（<b class="text-indigo-800 dark:text-indigo-300">緯創 3231、尖點 8021</b>）預設以 <b class="font-mono text-rose-700 dark:text-amber-300">1,000 股（1張）</b> 計算；已出場標的（<b class="text-indigo-800 dark:text-indigo-300">高僑 6234 出清 $50、台積電 2330 調賣 10股 $2480</b>）已設為「<b>固定已出場不再追蹤</b>」，您可隨時點擊「<b>編輯</b>」填入買進成本或修改股數！
+            先前未註明股數之標的（<b class="text-indigo-800 dark:text-indigo-300">緯創 3231、尖點 8021、高僑 6234</b>）已改以 <b class="font-mono text-rose-700 dark:text-amber-300">100 股</b> 計算；10/15 與 10/16 補進未註明股數與價格之標的（<b class="text-indigo-800 dark:text-indigo-300">台積電、南亞科、台塑化、頎邦、京元電子</b>）預設以 <b class="font-mono text-rose-700 dark:text-amber-300">20 股</b> 及<b>當日市場均價</b>計算，可隨時點擊「<b>編輯</b>」調整！
           </div>
         </div>
         <button id="btnQuickJumpJson" type="button" class="w-full sm:w-auto shrink-0 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm transition shadow-sm text-center">
@@ -584,7 +584,7 @@
   "schemaVersion": "1.0",
   "portfolioName": "台股投資組合追蹤清單",
   "currency": "TWD",
-  "lastUpdated": "2026-10-27 13:35:00",
+  "lastUpdated": "2026-10-28 13:30:00",
   "settings": {
     "colorScheme": "TW_RED_UP_GREEN_DOWN",
     "note": "status 設為 'active' 且 trackLive: true 代表持續追蹤即時報價；status 設為 'exited' 且 trackLive: false 代表已出場固定不再追蹤。"
@@ -603,8 +603,8 @@
       "shares": 5,
       "sharesAssumed": false,
       "buyPrice": 3355,
-      "currentPrice": 3130,
-      "prevClose": 3145,
+      "currentPrice": 3195,
+      "prevClose": 3130,
       "exitPrice": null,
       "exitDate": null,
       "targetPrice": null,
@@ -623,8 +623,8 @@
       "shares": 100,
       "sharesAssumed": false,
       "buyPrice": 1120,
-      "currentPrice": 1115,
-      "prevClose": 1195,
+      "currentPrice": 1155,
+      "prevClose": 1080,
       "exitPrice": null,
       "exitDate": null,
       "targetPrice": 1610,
@@ -640,15 +640,195 @@
       "tradeDate": "2026-10-12",
       "tradeTime": "12:45",
       "actionLabel": "買進",
-      "shares": 1000,
+      "shares": 100,
       "sharesAssumed": true,
       "buyPrice": 189,
-      "currentPrice": 190.5,
-      "prevClose": 190,
+      "currentPrice": 195,
+      "prevClose": 190.5,
       "exitPrice": null,
       "exitDate": null,
       "targetPrice": 300,
-      "note": "買進緯創$189。AI伺服器業績大暴發，外資調目標價$300。(未註明股數預設1張)"
+      "note": "買進緯創$189。AI伺服器業績大暴發，外資調目標價$300。(未註明股數改以100股計)"
+    },
+    {
+      "id": "tw-2330-20261013",
+      "symbol": "2330",
+      "market": "TWSE",
+      "name": "台積電",
+      "status": "active",
+      "trackLive": true,
+      "tradeDate": "2026-10-13",
+      "tradeTime": "20:54",
+      "actionLabel": "回補10股",
+      "shares": 10,
+      "sharesAssumed": false,
+      "buyPrice": 2500,
+      "currentPrice": 2425,
+      "prevClose": 2400,
+      "exitPrice": null,
+      "exitDate": null,
+      "targetPrice": null,
+      "note": "10/13 今天回補10股台積電（以當日均價$2,500計）。"
+    },
+    {
+      "id": "tw-2408-20261013",
+      "symbol": "2408",
+      "market": "TWSE",
+      "name": "南亞科",
+      "status": "active",
+      "trackLive": true,
+      "tradeDate": "2026-10-13",
+      "tradeTime": "20:54",
+      "actionLabel": "回補90股",
+      "shares": 90,
+      "sharesAssumed": false,
+      "buyPrice": 495.75,
+      "currentPrice": 473.5,
+      "prevClose": 441,
+      "exitPrice": null,
+      "exitDate": null,
+      "targetPrice": 570,
+      "note": "10/13 回補90股南亞科（以當日均價$495.75計）。"
+    },
+    {
+      "id": "tw-2330-20261015",
+      "symbol": "2330",
+      "market": "TWSE",
+      "name": "台積電",
+      "status": "active",
+      "trackLive": true,
+      "tradeDate": "2026-10-15",
+      "tradeTime": "12:49",
+      "actionLabel": "補進",
+      "shares": 20,
+      "sharesAssumed": true,
+      "buyPrice": 2435,
+      "currentPrice": 2425,
+      "prevClose": 2400,
+      "exitPrice": null,
+      "exitDate": null,
+      "targetPrice": null,
+      "note": "10/15 補進台積電（預設20股，以當日均價$2,435計）。"
+    },
+    {
+      "id": "tw-2408-20261015",
+      "symbol": "2408",
+      "market": "TWSE",
+      "name": "南亞科",
+      "status": "active",
+      "trackLive": true,
+      "tradeDate": "2026-10-15",
+      "tradeTime": "12:49",
+      "actionLabel": "補進",
+      "shares": 20,
+      "sharesAssumed": true,
+      "buyPrice": 444.75,
+      "currentPrice": 473.5,
+      "prevClose": 441,
+      "exitPrice": null,
+      "exitDate": null,
+      "targetPrice": 570,
+      "note": "10/15 補進南亞科（預設20股，以當日均價$444.75計）。"
+    },
+    {
+      "id": "tw-6505-20261015",
+      "symbol": "6505",
+      "market": "TWSE",
+      "name": "台塑化",
+      "status": "active",
+      "trackLive": true,
+      "tradeDate": "2026-10-15",
+      "tradeTime": "12:49",
+      "actionLabel": "補進",
+      "shares": 20,
+      "sharesAssumed": true,
+      "buyPrice": 114.25,
+      "currentPrice": 105.5,
+      "prevClose": 106,
+      "exitPrice": null,
+      "exitDate": null,
+      "targetPrice": 108,
+      "note": "10/15 補進台塑化（預設20股，以當日均價$114.25計）。"
+    },
+    {
+      "id": "tw-6147-20261015",
+      "symbol": "6147",
+      "market": "TPEX",
+      "name": "頎邦",
+      "status": "active",
+      "trackLive": true,
+      "tradeDate": "2026-10-15",
+      "tradeTime": "12:49",
+      "actionLabel": "補進",
+      "shares": 20,
+      "sharesAssumed": true,
+      "buyPrice": 216.25,
+      "currentPrice": 219.5,
+      "prevClose": 207,
+      "exitPrice": null,
+      "exitDate": null,
+      "targetPrice": 290,
+      "note": "10/15 補進頎邦（預設20股，以當日均價$216.25計）。"
+    },
+    {
+      "id": "tw-2449-20261015",
+      "symbol": "2449",
+      "market": "TWSE",
+      "name": "京元電子",
+      "status": "active",
+      "trackLive": true,
+      "tradeDate": "2026-10-15",
+      "tradeTime": "12:49",
+      "actionLabel": "補進",
+      "shares": 20,
+      "sharesAssumed": true,
+      "buyPrice": 273.5,
+      "currentPrice": 274.5,
+      "prevClose": 269,
+      "exitPrice": null,
+      "exitDate": null,
+      "targetPrice": null,
+      "note": "10/15 補進京元電子（預設20股，以當日均價$273.50計）。"
+    },
+    {
+      "id": "tw-2330-20261016",
+      "symbol": "2330",
+      "market": "TWSE",
+      "name": "台積電",
+      "status": "active",
+      "trackLive": true,
+      "tradeDate": "2026-10-16",
+      "tradeTime": "12:40",
+      "actionLabel": "再補",
+      "shares": 20,
+      "sharesAssumed": true,
+      "buyPrice": 2432.5,
+      "currentPrice": 2425,
+      "prevClose": 2400,
+      "exitPrice": null,
+      "exitDate": null,
+      "targetPrice": null,
+      "note": "10/16 再補台積電（預設20股，以當日均價$2,432.50計）。"
+    },
+    {
+      "id": "tw-6147-20261016",
+      "symbol": "6147",
+      "market": "TPEX",
+      "name": "頎邦",
+      "status": "active",
+      "trackLive": true,
+      "tradeDate": "2026-10-16",
+      "tradeTime": "12:40",
+      "actionLabel": "再補",
+      "shares": 20,
+      "sharesAssumed": true,
+      "buyPrice": 211.75,
+      "currentPrice": 219.5,
+      "prevClose": 207,
+      "exitPrice": null,
+      "exitDate": null,
+      "targetPrice": 290,
+      "note": "10/16 再補頎邦（預設20股，以當日均價$211.75計）。"
     },
     {
       "id": "tw-8021-20261019",
@@ -660,15 +840,15 @@
       "tradeDate": "2026-10-19",
       "tradeTime": "13:00",
       "actionLabel": "買進",
-      "shares": 1000,
+      "shares": 100,
       "sharesAssumed": true,
       "buyPrice": 534,
-      "currentPrice": 433,
-      "prevClose": 479,
+      "currentPrice": 439.5,
+      "prevClose": 433,
       "exitPrice": null,
       "exitDate": null,
       "targetPrice": 570,
-      "note": "買進尖點$534。(未註明股數預設1張)"
+      "note": "買進尖點$534。(未註明股數改以100股計)"
     },
     {
       "id": "tw-00981A-20261020",
@@ -683,8 +863,8 @@
       "shares": 1000,
       "sharesAssumed": false,
       "buyPrice": 29.15,
-      "currentPrice": 27.4,
-      "prevClose": 28.19,
+      "currentPrice": 28.33,
+      "prevClose": 27.4,
       "exitPrice": null,
       "exitDate": null,
       "targetPrice": null,
@@ -703,8 +883,8 @@
       "shares": 5,
       "sharesAssumed": false,
       "buyPrice": 2410,
-      "currentPrice": 2400,
-      "prevClose": 2385,
+      "currentPrice": 2425,
+      "prevClose": 2400,
       "exitPrice": null,
       "exitDate": null,
       "targetPrice": null,
@@ -724,11 +904,11 @@
       "sharesAssumed": false,
       "buyPrice": 28,
       "currentPrice": 27.95,
-      "prevClose": 26.8,
+      "prevClose": 27.95,
       "exitPrice": null,
       "exitDate": null,
       "targetPrice": 33,
-      "note": "今天 13:35 買進台泥 200 股$28。"
+      "note": "10/27 13:35 買進台泥 200 股$28。"
     },
     {
       "id": "tw-6234-20261019-exit",
@@ -740,7 +920,7 @@
       "tradeDate": "2026-10-19",
       "tradeTime": "13:00",
       "actionLabel": "出清出場",
-      "shares": 1000,
+      "shares": 100,
       "sharesAssumed": true,
       "buyPrice": null,
       "currentPrice": 49.05,
@@ -748,7 +928,7 @@
       "exitPrice": 50,
       "exitDate": "2026-10-19",
       "targetPrice": null,
-      "note": "10/19 出清高僑$50（已固定出場不再追蹤；可點編輯補入當初買進成本與股數）"
+      "note": "10/19 出清高僑$50（已固定出場不再追蹤；未註明股數改以100股計）"
     },
     {
       "id": "tw-2330-20260929-exit",
@@ -763,8 +943,8 @@
       "shares": 10,
       "sharesAssumed": false,
       "buyPrice": null,
-      "currentPrice": 2400,
-      "prevClose": 2385,
+      "currentPrice": 2425,
+      "prevClose": 2400,
       "exitPrice": 2480,
       "exitDate": "2026-09-29",
       "targetPrice": null,
@@ -776,7 +956,7 @@
     // =========================================================================
     // 2. STATE & THEME MANAGEMENT (Default: Dark Mode)
     // =========================================================================
-    const STORAGE_KEY = "tw_portfolio_tracker_json_v2";
+    const STORAGE_KEY = "tw_portfolio_tracker_json_v3";
     const THEME_KEY = "tw_portfolio_theme_v2";
 
     let portfolioData = loadPortfolioState();
@@ -1096,7 +1276,7 @@
                   </div>
                   <div class="mt-1 flex flex-wrap items-center gap-1.5">
                     <span class="text-xs font-bold px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300">${escapeHtml(p.actionLabel || "買進")}</span>
-                    ${p.sharesAssumed ? `<span class="text-xs font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 dark:bg-amber-500/20 dark:text-amber-300">預設1張</span>` : ""}
+                    ${p.sharesAssumed ? `<span class="text-xs font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 dark:bg-amber-500/20 dark:text-amber-300">預設${shares}股</span>` : ""}
                     <span class="font-mono text-xs font-semibold text-slate-500 dark:text-slate-400">📅 ${escapeHtml(p.tradeDate || "—")}</span>
                   </div>
                 </div>
@@ -1196,7 +1376,7 @@
                 <div class="mt-1 flex flex-wrap items-center gap-1.5">
                   <span class="px-2 py-0.5 rounded-md bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-indigo-300 font-mono font-bold text-xs">${escapeHtml(p.symbol)}</span><span class="block text-xs text-slate-500 dark:text-slate-400">${escapeHtml(quoteLabel(p))}</span>
                   <span class="text-xs font-bold px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300">${escapeHtml(p.actionLabel || "買進")}</span>
-                  ${p.sharesAssumed ? `<span class="text-xs font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 dark:bg-amber-500/20 dark:text-amber-300">預設1張</span>` : ""}
+                  ${p.sharesAssumed ? `<span class="text-xs font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 dark:bg-amber-500/20 dark:text-amber-300">預設${shares}股</span>` : ""}
                 </div>
               </td>
 
@@ -2147,7 +2327,7 @@
       portfolioData = JSON.parse(JSON.stringify(DEFAULT_PORTFOLIO_JSON));
       savePortfolioState();
       renderAll();
-      showToast("已還原為預設 9 筆標的資料");
+      showToast(`已還原為預設 ${DEFAULT_PORTFOLIO_JSON.positions.length} 筆標的資料`);
     }
 
     function insertJsonTemplate(mode) {
