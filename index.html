@@ -3,55 +3,49 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>台股投資組合即時追蹤系統 | JSON 資料驅動看盤面板</title>
+  <title>台股即時報酬看盤系統</title>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&family=Noto+Sans+TC:wght@500;700;900&display=swap" rel="stylesheet">
   <script>
     tailwind.config = {
       darkMode: 'class',
       theme: {
         extend: {
           fontFamily: {
-            sans: ['Inter', 'Noto Sans TC', 'sans-serif'],
+            sans: ['"Noto Sans TC"', 'Inter', 'sans-serif'],
             mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace']
-          },
-          colors: {
-            twUp: '#ef4444',     // 台股紅漲
-            twDown: '#10b981',   // 台股綠跌
-            twFlat: '#94a3b8'
           }
         }
       }
     }
   </script>
   <style>
+    html {
+      font-size: 17px;
+    }
     body {
-      font-family: 'Inter', 'Noto Sans TC', sans-serif;
-      background-color: #0b0f19;
-      color: #e2e8f0;
+      font-family: 'Noto Sans TC', 'Inter', sans-serif;
+      transition: background-color 0.2s ease, color 0.2s ease;
     }
     .custom-scrollbar::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
+      width: 8px;
+      height: 8px;
     }
     .custom-scrollbar::-webkit-scrollbar-track {
-      background: #0f172a;
+      background: rgba(148, 163, 184, 0.15);
     }
     .custom-scrollbar::-webkit-scrollbar-thumb {
-      background: #334155;
-      border-radius: 3px;
-    }
-    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-      background: #475569;
+      background: rgba(100, 116, 139, 0.5);
+      border-radius: 4px;
     }
     @keyframes flashRed {
       0%, 100% { background-color: transparent; }
-      40% { background-color: rgba(239, 68, 68, 0.25); }
+      40% { background-color: rgba(220, 38, 38, 0.22); }
     }
     @keyframes flashGreen {
       0%, 100% { background-color: transparent; }
-      40% { background-color: rgba(16, 185, 129, 0.25); }
+      40% { background-color: rgba(5, 150, 105, 0.22); }
     }
     .flash-up {
       animation: flashRed 0.9s ease-out;
@@ -61,52 +55,82 @@
     }
   </style>
 </head>
-<body class="min-h-screen flex flex-col selection:bg-indigo-500 selection:text-white">
+<body class="min-h-screen flex flex-col bg-[#F8FAFC] dark:bg-[#0B0F19] text-slate-900 dark:text-slate-100 selection:bg-indigo-600 selection:text-white">
 
-  <!-- Top Navigation & Status Bar -->
-  <header class="sticky top-0 z-30 bg-slate-900/95 backdrop-blur border-b border-slate-800 px-4 py-3 sm:px-6">
-    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+  <!-- Top Navigation & Control Bar -->
+  <header class="sticky top-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur border-b-2 border-slate-200 dark:border-slate-800 px-4 py-3.5 sm:px-6 shadow-sm">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+      <!-- Title Area -->
+      <div class="flex items-center gap-3.5">
+        <div class="w-12 h-12 rounded-2xl bg-rose-600 dark:bg-rose-500 flex items-center justify-center shadow-md shrink-0">
+          <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
           </svg>
         </div>
         <div>
-          <div class="flex items-center gap-2">
-            <h1 class="text-lg sm:text-xl font-bold text-white tracking-tight">台股標的即時報酬追蹤系統</h1>
-            <span class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">
-              JSON Data 驅動
+          <div class="flex flex-wrap items-center gap-2.5">
+            <h1 class="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">台股即時報酬看盤系統</h1>
+            <span class="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700">
+              <span class="text-red-600 dark:text-rose-400">紅漲 ▲</span>
+              <span class="text-slate-400 dark:text-slate-500">/</span>
+              <span class="text-emerald-600 dark:text-emerald-400">綠跌 ▼</span>
             </span>
           </div>
-          <p class="text-xs text-slate-400">支援即時連線報價、跳動模擬、已出場鎖定結算與 JSON 快速增刪</p>
+          <div class="flex items-center gap-2 mt-0.5 text-xs sm:text-sm text-slate-600 dark:text-slate-400 font-medium">
+            <span id="statusDot" class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span>
+            <span id="statusText">最新收盤 / 即時追蹤就緒</span>
+          </div>
         </div>
       </div>
 
-      <!-- Controls -->
-      <div class="flex flex-wrap items-center gap-2">
-        <div class="flex items-center gap-2 bg-slate-800/80 border border-slate-700/80 rounded-lg px-2.5 py-1.5 text-xs">
-          <span id="statusDot" class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-          <span id="statusText" class="text-slate-300 font-medium">最新收盤 / 即時追蹤就緒</span>
-        </div>
+      <!-- Action Controls -->
+      <div class="flex flex-wrap items-center gap-2.5">
+        <!-- Sun / Moon Toggle Switch (Icon only, no text) -->
+        <button
+          id="btnThemeToggle"
+          type="button"
+          role="switch"
+          aria-checked="true"
+          aria-label="切換深淺色主題"
+          title="切換深色 / 淺色主題"
+          class="relative inline-flex items-center w-16 h-9 rounded-full p-1 bg-slate-200 dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-700 transition-colors duration-200 focus:outline-none shadow-inner"
+        >
+          <!-- Sun Icon (Left) -->
+          <span class="w-6 h-6 flex items-center justify-center text-amber-500 z-10 ml-0.5">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd"></path>
+            </svg>
+          </span>
+          <!-- Moon Icon (Right) -->
+          <span class="w-6 h-6 flex items-center justify-center text-indigo-300 z-10 ml-auto mr-0.5">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path>
+            </svg>
+          </span>
+          <!-- Sliding Knob -->
+          <span
+            id="themeToggleKnob"
+            class="absolute left-1 top-1 w-6 h-6 rounded-full bg-white dark:bg-indigo-600 shadow-md transform transition-transform duration-200 translate-x-7"
+          ></span>
+        </button>
 
-        <button id="btnLiveFetch" type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-indigo-600 hover:bg-indigo-500 text-white transition shadow-sm">
-          <svg id="iconRefresh" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+        <!-- Sync Quotes Button -->
+        <button id="btnLiveFetch" type="button" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white transition shadow-sm">
+          <svg id="iconRefresh" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
           </svg>
           <span>同步網路報價</span>
         </button>
 
-        <button id="btnSimToggle" type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
-          <svg class="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-          </svg>
+        <!-- Simulation Toggle Button -->
+        <button id="btnSimToggle" type="button" class="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-sm font-bold bg-white hover:bg-slate-100 text-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 border-2 border-slate-300 dark:border-slate-700 transition">
           <span id="simToggleLabel">開啟盤中模擬跳動</span>
         </button>
 
-        <button id="btnOpenAddModal" type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-rose-600 hover:bg-rose-500 text-white transition shadow-sm">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+        <!-- Add Stock Button -->
+        <button id="btnOpenAddModal" type="button" class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold bg-rose-600 hover:bg-rose-700 text-white transition shadow-sm">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path>
           </svg>
           <span>新增標的</span>
         </button>
@@ -117,191 +141,185 @@
   <!-- Main Content -->
   <main class="flex-1 max-w-7xl w-full mx-auto px-4 py-6 sm:px-6 space-y-6">
 
-    <!-- KPI Summary Cards -->
-    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      <!-- Card 1: 總持倉市值 -->
-      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-sm">
-        <div class="flex items-center justify-between">
-          <span class="text-xs font-medium text-slate-400">追蹤中持倉總市值</span>
-          <span class="text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-300" id="kpiActiveCount">0 檔追蹤中</span>
-        </div>
-        <div class="mt-2 flex items-baseline gap-2">
-          <span class="text-2xl font-bold font-mono text-white" id="kpiMarketValue">$0</span>
-        </div>
-        <div class="mt-1 flex items-center justify-between text-xs text-slate-400">
-          <span>投入總成本</span>
-          <span class="font-mono text-slate-300" id="kpiTotalCost">$0</span>
-        </div>
-      </div>
-
-      <!-- Card 2: 未實現總損益 & 報酬率 -->
-      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-sm">
-        <div class="flex items-center justify-between">
-          <span class="text-xs font-medium text-slate-400">追蹤中未實現損益 (ROI)</span>
-          <span class="text-xs px-2 py-0.5 rounded font-mono font-semibold" id="kpiActiveRoiBadge">0.00%</span>
-        </div>
-        <div class="mt-2 flex items-baseline gap-2">
-          <span class="text-2xl font-bold font-mono" id="kpiUnrealizedPnl">$0</span>
-        </div>
-        <div class="mt-1 flex items-center justify-between text-xs text-slate-400">
-          <span>台股配色慣例</span>
-          <span class="text-slate-300"><b class="text-rose-400">紅漲</b> / <b class="text-emerald-400">綠跌</b></span>
-        </div>
-      </div>
-
-      <!-- Card 3: 當日總漲跌金額 -->
-      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-sm">
-        <div class="flex items-center justify-between">
-          <span class="text-xs font-medium text-slate-400">今日持倉帳面漲跌</span>
-          <span class="text-xs px-2 py-0.5 rounded font-mono font-semibold" id="kpiDayChangePct">0.00%</span>
-        </div>
-        <div class="mt-2 flex items-baseline gap-2">
-          <span class="text-2xl font-bold font-mono" id="kpiDayChangeAmt">$0</span>
-        </div>
-        <div class="mt-1 flex items-center justify-between text-xs text-slate-400">
-          <span>報價更新時間</span>
-          <span class="font-mono text-slate-300" id="kpiLastUpdated">--:--:--</span>
-        </div>
-      </div>
-
-      <!-- Card 4: 已出場鎖定標的 -->
-      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-sm">
-        <div class="flex items-center justify-between">
-          <span class="text-xs font-medium text-slate-400">已出場 / 減碼鎖定紀錄</span>
-          <span class="text-xs px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30" id="kpiClosedCount">0 筆紀錄</span>
-        </div>
-        <div class="mt-2 flex items-baseline gap-2">
-          <span class="text-2xl font-bold font-mono text-amber-300" id="kpiClosedProceeds">$0</span>
-        </div>
-        <div class="mt-1 flex items-center justify-between text-xs text-slate-400">
-          <span>已實現損益 (有成本者)</span>
-          <span class="font-mono" id="kpiRealizedPnl">待補買價</span>
-        </div>
-      </div>
-    </section>
-
-    <!-- Main View Switcher Tabs -->
-    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
-      <div class="flex flex-wrap items-center gap-1.5" role="tablist">
-        <button type="button" data-tab="tab-portfolio" class="main-tab-btn px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-indigo-600 text-white shadow-sm transition">
+    <!-- Main View Switcher Tabs & Filter Bar -->
+    <div class="flex flex-wrap items-center justify-between gap-4 border-b-2 border-slate-200 dark:border-slate-800 pb-4">
+      <div class="flex flex-wrap items-center gap-2" role="tablist">
+        <button type="button" data-tab="tab-portfolio" class="main-tab-btn px-4 py-2.5 rounded-xl text-sm sm:text-base font-bold bg-indigo-600 text-white shadow-sm transition">
           即時持倉與已出場清單
         </button>
-        <button type="button" data-tab="tab-json" class="main-tab-btn px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800 transition flex items-center gap-1.5">
+        <button type="button" data-tab="tab-json" class="main-tab-btn px-4 py-2.5 rounded-xl text-sm sm:text-base font-bold bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border-2 border-slate-300 dark:border-slate-800 transition flex items-center gap-1.5">
           <span>JSON 資料結構編輯器</span>
-          <span class="px-1.5 py-0.5 text-[10px] rounded bg-indigo-500/20 text-indigo-300 font-mono">Schema</span>
+          <span class="px-1.5 py-0.5 text-xs rounded bg-indigo-100 dark:bg-indigo-500/20 text-indigo-800 dark:text-indigo-300 font-mono">Schema</span>
         </button>
-        <button type="button" data-tab="tab-analytics" class="main-tab-btn px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800 transition">
+        <button type="button" data-tab="tab-analytics" class="main-tab-btn px-4 py-2.5 rounded-xl text-sm sm:text-base font-bold bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border-2 border-slate-300 dark:border-slate-800 transition">
           視覺化報酬與配置圖表
         </button>
       </div>
 
-      <!-- Filter & Search Bar (shown on portfolio tab) -->
-      <div id="portfolioFilterBar" class="flex flex-wrap items-center gap-2">
-        <div class="inline-flex rounded-lg bg-slate-900 p-1 border border-slate-800">
-          <button type="button" data-filter="all" class="status-filter-btn px-2.5 py-1 rounded-md text-xs font-medium bg-slate-800 text-white">全部顯示</button>
-          <button type="button" data-filter="active" class="status-filter-btn px-2.5 py-1 rounded-md text-xs font-medium text-slate-400 hover:text-white">追蹤中 (Active)</button>
-          <button type="button" data-filter="exited" class="status-filter-btn px-2.5 py-1 rounded-md text-xs font-medium text-slate-400 hover:text-white">已出場固定 (Exited)</button>
+      <!-- Filter & Search Bar -->
+      <div id="portfolioFilterBar" class="flex flex-wrap items-center gap-2.5">
+        <div class="inline-flex rounded-xl bg-slate-200/80 dark:bg-slate-900 p-1 border border-slate-300 dark:border-slate-800">
+          <button type="button" data-filter="all" class="status-filter-btn px-3 py-1.5 rounded-lg text-sm font-bold bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm">全部顯示</button>
+          <button type="button" data-filter="active" class="status-filter-btn px-3 py-1.5 rounded-lg text-sm font-bold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">追蹤中 (Active)</button>
+          <button type="button" data-filter="exited" class="status-filter-btn px-3 py-1.5 rounded-lg text-sm font-bold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">已出場固定 (Exited)</button>
         </div>
 
         <div class="relative">
-          <input id="searchInput" type="text" placeholder="搜尋代號、名稱或備註..." class="w-44 sm:w-56 bg-slate-900 border border-slate-800 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500">
-          <svg class="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+          <input id="searchInput" type="text" placeholder="搜尋股票名稱或代號..." class="w-48 sm:w-60 bg-white dark:bg-slate-900 border-2 border-slate-300 dark:border-slate-800 rounded-xl pl-9 pr-3 py-2 text-sm font-medium text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-indigo-600">
+          <svg class="w-4 h-4 text-slate-400 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
           </svg>
         </div>
       </div>
     </div>
 
-    <!-- TAB 1: PORTFOLIO TABLE & CARDS -->
-    <section id="tab-portfolio" class="tab-panel space-y-6">
+    <!-- TAB 1: PORTFOLIO TABLE, KPI CARDS, EXITED LIST & NOTICE -->
+    <section id="tab-portfolio" class="tab-panel space-y-8">
 
-      <!-- Notice Banner for Assumed Shares / Missing Cost -->
-      <div class="bg-indigo-950/40 border border-indigo-500/30 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-indigo-200">
-        <div class="flex items-start gap-2.5">
-          <svg class="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-          </svg>
-          <div>
-            <span class="font-semibold text-white">貼心提示：</span>
-            對話截圖中未特別註明股數之買進標的（<span class="text-indigo-300 font-medium">緯創 3231、尖點 8021</span>）預設以 <span class="font-mono font-semibold text-amber-300">1,000 股（1張）</span> 計算；已出場或調節標的（<span class="text-indigo-300 font-medium">高僑 6234 出清 $50、台積電 2330 調賣 10股 $2480</span>）已設為「<b>固定已出場不再追蹤</b>」，您可隨時點擊「編輯」填入當初買進成本或修改股數！
+      <!-- 1. Active Tracking Section (First Priority) -->
+      <div id="activeSectionWrapper" class="space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div class="flex items-center gap-2.5">
+            <span class="w-3.5 h-3.5 rounded-full bg-rose-600 dark:bg-rose-500"></span>
+            <h2 class="text-lg sm:text-xl font-black text-slate-900 dark:text-white">即時追蹤中標的 (Active Holdings)</h2>
+          </div>
+          <div class="text-sm font-medium text-slate-600 dark:text-slate-400">
+            💡 點擊表內「<b>目前現價</b>」框可直接修改數字試算損益
           </div>
         </div>
-        <button id="btnQuickJumpJson" type="button" class="shrink-0 px-3 py-1.5 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-200 border border-indigo-400/30 font-medium transition">
+
+        <div class="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+          <div class="overflow-x-auto custom-scrollbar">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="border-b-2 border-slate-200 dark:border-slate-800 text-sm font-bold text-slate-700 dark:text-slate-300 bg-slate-100/90 dark:bg-slate-950/70">
+                  <th class="py-4 px-4">股票名稱 / 代號</th>
+                  <th class="py-4 px-3 text-right">持有股數與成本</th>
+                  <th class="py-4 px-3 text-right">買進均價</th>
+                  <th class="py-4 px-3 text-right">目前現價 (可改)</th>
+                  <th class="py-4 px-3 text-right">今日漲跌</th>
+                  <th class="py-4 px-3 text-right">累積損益金額</th>
+                  <th class="py-4 px-3 text-right">報酬率 (ROI)</th>
+                  <th class="py-4 px-4">買進日期 / 目標價</th>
+                  <th class="py-4 px-4 text-right">操作按鈕</th>
+                </tr>
+              </thead>
+              <tbody id="activeTableBody" class="divide-y-2 divide-slate-100 dark:divide-slate-800/80 text-base">
+                <!-- Populated by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. KPI Summary Cards -->
+      <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Card 1: 總持倉市值 -->
+        <div class="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
+          <div class="flex items-center justify-between">
+            <span class="text-sm font-bold text-slate-600 dark:text-slate-400">追蹤中持倉總市值</span>
+            <span class="text-xs font-bold px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200" id="kpiActiveCount">0 檔追蹤中</span>
+          </div>
+          <div class="mt-2.5 flex items-baseline gap-2">
+            <span class="text-2xl sm:text-3xl font-black font-mono text-slate-900 dark:text-white" id="kpiMarketValue">$0</span>
+          </div>
+          <div class="mt-2 flex items-center justify-between text-sm font-medium text-slate-600 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <span>投入總成本</span>
+            <span class="font-mono font-bold text-slate-800 dark:text-slate-200" id="kpiTotalCost">$0</span>
+          </div>
+        </div>
+
+        <!-- Card 2: 未實現總損益 & 報酬率 -->
+        <div class="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
+          <div class="flex items-center justify-between">
+            <span class="text-sm font-bold text-slate-600 dark:text-slate-400">追蹤中未實現損益 (ROI)</span>
+            <span class="text-sm px-2.5 py-1 rounded-lg font-mono font-bold" id="kpiActiveRoiBadge">0.00%</span>
+          </div>
+          <div class="mt-2.5 flex items-baseline gap-2">
+            <span class="text-2xl sm:text-3xl font-black font-mono" id="kpiUnrealizedPnl">$0</span>
+          </div>
+          <div class="mt-2 flex items-center justify-between text-sm font-medium text-slate-600 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <span>台股配色慣例</span>
+            <span><b class="text-red-600 dark:text-rose-400">紅漲 ▲</b> / <b class="text-emerald-600 dark:text-emerald-400">綠跌 ▼</b></span>
+          </div>
+        </div>
+
+        <!-- Card 3: 當日總漲跌金額 -->
+        <div class="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
+          <div class="flex items-center justify-between">
+            <span class="text-sm font-bold text-slate-600 dark:text-slate-400">今日持倉帳面漲跌</span>
+            <span class="text-sm px-2.5 py-1 rounded-lg font-mono font-bold" id="kpiDayChangePct">0.00%</span>
+          </div>
+          <div class="mt-2.5 flex items-baseline gap-2">
+            <span class="text-2xl sm:text-3xl font-black font-mono" id="kpiDayChangeAmt">$0</span>
+          </div>
+          <div class="mt-2 flex items-center justify-between text-sm font-medium text-slate-600 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <span>報價更新時間</span>
+            <span class="font-mono font-bold text-slate-800 dark:text-slate-200" id="kpiLastUpdated">--:--:--</span>
+          </div>
+        </div>
+
+        <!-- Card 4: 已出場鎖定標的 -->
+        <div class="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
+          <div class="flex items-center justify-between">
+            <span class="text-sm font-bold text-slate-600 dark:text-slate-400">已出場 / 減碼鎖定紀錄</span>
+            <span class="text-xs font-bold px-2.5 py-1 rounded-lg bg-amber-100 text-amber-900 dark:bg-amber-500/15 dark:text-amber-300 border border-amber-300 dark:border-amber-500/30" id="kpiClosedCount">0 筆已固定</span>
+          </div>
+          <div class="mt-2.5 flex items-baseline gap-2">
+            <span class="text-2xl sm:text-3xl font-black font-mono text-amber-700 dark:text-amber-300" id="kpiClosedProceeds">$0</span>
+          </div>
+          <div class="mt-2 flex items-center justify-between text-sm font-medium text-slate-600 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <span>已實現損益</span>
+            <span class="font-mono font-bold" id="kpiRealizedPnl">待補買價</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. Exited / Locked Section -->
+      <div id="exitedSectionWrapper" class="space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div class="flex items-center gap-2.5">
+            <span class="w-3.5 h-3.5 rounded-full bg-amber-500"></span>
+            <h2 class="text-lg sm:text-xl font-black text-slate-900 dark:text-white">已出場固定標的 (Exited & Locked — 不再追蹤現價)</h2>
+          </div>
+          <span class="text-sm font-medium text-slate-600 dark:text-slate-400">價格已固定於賣出成交價，不會隨大盤跳動</span>
+        </div>
+
+        <div class="bg-white dark:bg-slate-900/80 border-2 border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+          <div class="overflow-x-auto custom-scrollbar">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="border-b-2 border-slate-200 dark:border-slate-800 text-sm font-bold text-slate-700 dark:text-slate-300 bg-slate-100/90 dark:bg-slate-950/70">
+                  <th class="py-4 px-4">股票名稱 / 代號</th>
+                  <th class="py-4 px-3">出場日期與狀態</th>
+                  <th class="py-4 px-3 text-right">出場股數與總額</th>
+                  <th class="py-4 px-3 text-right">買進成本價</th>
+                  <th class="py-4 px-3 text-right">固定出場價</th>
+                  <th class="py-4 px-3 text-right">已實現損益</th>
+                  <th class="py-4 px-3 text-right">最終報酬率</th>
+                  <th class="py-4 px-4 text-right">操作按鈕</th>
+                </tr>
+              </thead>
+              <tbody id="exitedTableBody" class="divide-y-2 divide-slate-100 dark:divide-slate-800/70 text-base">
+                <!-- Populated by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. Notice Banner for Assumed Shares / Missing Cost (At the very bottom) -->
+      <div class="bg-indigo-50 dark:bg-indigo-950/40 border-2 border-indigo-200 dark:border-indigo-500/30 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-sm sm:text-base text-slate-800 dark:text-indigo-200">
+        <div class="flex items-start gap-3">
+          <span class="text-xl shrink-0">📌</span>
+          <div class="leading-relaxed">
+            <span class="font-black text-indigo-950 dark:text-white">貼心提示：</span>
+            未特別註明股數之買進標的（<b class="text-indigo-800 dark:text-indigo-300">緯創 3231、尖點 8021</b>）預設以 <b class="font-mono text-rose-700 dark:text-amber-300">1,000 股（1張）</b> 計算；已出場標的（<b class="text-indigo-800 dark:text-indigo-300">高僑 6234 出清 $50、台積電 2330 調賣 10股 $2480</b>）已設為「<b>固定已出場不再追蹤</b>」，您可隨時點擊表格右側的「<b>編輯</b>」填入買進成本或修改股數！
+          </div>
+        </div>
+        <button id="btnQuickJumpJson" type="button" class="shrink-0 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm transition shadow-sm">
           查看 JSON 格式 →
         </button>
-      </div>
-
-      <!-- Active Tracking Section -->
-      <div id="activeSectionWrapper" class="space-y-3">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-2">
-            <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
-            <h2 class="text-sm sm:text-base font-bold text-white">即時追蹤中標的 (Active Holdings)</h2>
-            <span class="text-xs text-slate-400">— 隨現價變動即時計算報酬率與損益</span>
-          </div>
-          <div class="text-xs text-slate-400 hidden sm:block">
-            可直接點擊表內「現價」微調，或點擊「鎖定出場」轉為歷史固定部位
-          </div>
-        </div>
-
-        <div class="bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
-          <div class="overflow-x-auto custom-scrollbar">
-            <table class="w-full text-left border-collapse">
-              <thead>
-                <tr class="border-b border-slate-800 text-[11px] uppercase tracking-wider text-slate-400 bg-slate-950/60">
-                  <th class="py-3 px-4">標的代號 / 名稱</th>
-                  <th class="py-3 px-3">交易日期</th>
-                  <th class="py-3 px-3 text-right">持有股數</th>
-                  <th class="py-3 px-3 text-right">買進均價</th>
-                  <th class="py-3 px-3 text-right">即時現價 (可改)</th>
-                  <th class="py-3 px-3 text-right">今日漲跌</th>
-                  <th class="py-3 px-3 text-right">未實現損益</th>
-                  <th class="py-3 px-3 text-right">報酬率 (ROI)</th>
-                  <th class="py-3 px-4">目標價 / 備註</th>
-                  <th class="py-3 px-4 text-right">操作管理</th>
-                </tr>
-              </thead>
-              <tbody id="activeTableBody" class="divide-y divide-slate-800/70 text-xs sm:text-sm">
-                <!-- Populated by JS -->
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <!-- Exited / Locked Section -->
-      <div id="exitedSectionWrapper" class="space-y-3">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-2">
-            <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
-            <h2 class="text-sm sm:text-base font-bold text-white">已出場固定標的 (Exited & Locked — 不再追蹤現價)</h2>
-            <span class="text-xs text-slate-400">— `trackLive: false`，價格固定於出場成交價</span>
-          </div>
-        </div>
-
-        <div class="bg-slate-900/60 border border-slate-800/90 rounded-2xl overflow-hidden shadow-sm">
-          <div class="overflow-x-auto custom-scrollbar">
-            <table class="w-full text-left border-collapse">
-              <thead>
-                <tr class="border-b border-slate-800 text-[11px] uppercase tracking-wider text-slate-400 bg-slate-950/60">
-                  <th class="py-3 px-4">標的代號 / 名稱</th>
-                  <th class="py-3 px-3">出場日期</th>
-                  <th class="py-3 px-3">狀態標籤</th>
-                  <th class="py-3 px-3 text-right">出場股數</th>
-                  <th class="py-3 px-3 text-right">買進成本價</th>
-                  <th class="py-3 px-3 text-right">固定出場價</th>
-                  <th class="py-3 px-3 text-right">已實現損益</th>
-                  <th class="py-3 px-3 text-right">最終報酬率</th>
-                  <th class="py-3 px-4">出場紀錄與備註</th>
-                  <th class="py-3 px-4 text-right">操作管理</th>
-                </tr>
-              </thead>
-              <tbody id="exitedTableBody" class="divide-y divide-slate-800/60 text-xs sm:text-sm">
-                <!-- Populated by JS -->
-              </tbody>
-            </table>
-          </div>
-        </div>
       </div>
 
     </section>
@@ -310,85 +328,61 @@
     <section id="tab-json" class="tab-panel hidden space-y-6">
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- Left 2 Columns: Live JSON Editor -->
-        <div class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 flex flex-col space-y-4">
-          <div class="flex flex-wrap items-center justify-between gap-2">
+        <div class="lg:col-span-2 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl p-5 flex flex-col space-y-4 shadow-sm">
+          <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 class="text-base font-bold text-white flex items-center gap-2">
+              <h2 class="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
                 <span>Portfolio JSON 資料編輯器</span>
-                <span id="jsonValidBadge" class="px-2 py-0.5 text-[11px] rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-mono">JSON 語法正確</span>
+                <span id="jsonValidBadge" class="px-2.5 py-0.5 text-xs rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/30 font-mono">JSON 語法正確</span>
               </h2>
-              <p class="text-xs text-slate-400 mt-0.5">直接修改下方 JSON 即可批次新增、刪除標的，或將 <code class="text-amber-300">status</code> 改為 <code class="text-amber-300">"exited"</code> 固定出場不再追蹤。</p>
+              <p class="text-sm text-slate-600 dark:text-slate-400 mt-1">直接修改下方 JSON 即可批次新增、刪除標的，或將 <code class="text-rose-600 dark:text-amber-300 font-bold">status</code> 改為 <code class="text-rose-600 dark:text-amber-300 font-bold">"exited"</code> 固定出場不再追蹤。</p>
             </div>
             <div class="flex flex-wrap items-center gap-2">
-              <button id="btnApplyJson" type="button" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition shadow-sm">
+              <button id="btnApplyJson" type="button" class="px-4 py-2 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white transition shadow-sm">
                 套用 JSON 更新看板
               </button>
-              <button id="btnCopyJson" type="button" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
+              <button id="btnCopyJson" type="button" class="px-3.5 py-2 rounded-xl text-sm font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 transition">
                 複製 JSON
               </button>
-              <button id="btnDownloadJson" type="button" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
+              <button id="btnDownloadJson" type="button" class="px-3.5 py-2 rounded-xl text-sm font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 transition">
                 下載 .json 檔
               </button>
-              <label class="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer">
+              <label class="px-3.5 py-2 rounded-xl text-sm font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 transition cursor-pointer">
                 <span>匯入 .json</span>
                 <input id="inputImportJson" type="file" accept=".json,application/json" class="hidden">
               </label>
-              <button id="btnResetDefault" type="button" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-rose-950/60 hover:bg-rose-900/70 text-rose-300 border border-rose-800/60 transition">
+              <button id="btnResetDefault" type="button" class="px-3.5 py-2 rounded-xl text-sm font-bold bg-rose-100 hover:bg-rose-200 dark:bg-rose-950/60 dark:hover:bg-rose-900/70 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-800/60 transition">
                 還原預設資料
               </button>
             </div>
           </div>
 
-          <textarea id="jsonEditorTextarea" rows="22" spellcheck="false" class="w-full flex-1 bg-slate-950 border border-slate-800 rounded-xl p-4 font-mono text-xs sm:text-sm text-emerald-300 focus:outline-none focus:border-indigo-500 custom-scrollbar leading-relaxed"></textarea>
+          <textarea id="jsonEditorTextarea" rows="20" spellcheck="false" class="w-full flex-1 bg-slate-950 border-2 border-slate-300 dark:border-slate-800 rounded-xl p-4 font-mono text-sm text-emerald-300 focus:outline-none focus:border-indigo-500 custom-scrollbar leading-relaxed"></textarea>
 
-          <div id="jsonErrorBox" class="hidden rounded-xl bg-rose-950/70 border border-rose-500/40 p-3 text-xs text-rose-200 font-mono"></div>
+          <div id="jsonErrorBox" class="hidden rounded-xl bg-rose-100 dark:bg-rose-950/70 border border-rose-400 p-3 text-sm text-rose-800 dark:text-rose-200 font-mono"></div>
         </div>
 
         <!-- Right Column: JSON Schema Guide & Templates -->
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4">
-          <h3 class="text-sm font-bold text-white border-b border-slate-800 pb-2.5">JSON 欄位設計規範 (Schema)</h3>
-          <div class="space-y-3 text-xs text-slate-300 leading-relaxed">
-            <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5">
-              <div class="font-semibold text-indigo-300">1. 如何切換「追蹤中」與「已出場固定」？</div>
-              <p class="text-slate-400">每個標的物件只需設定以下兩個欄位即可控制：</p>
-              <ul class="list-disc list-inside space-y-1 text-slate-300 font-mono text-[11px]">
+        <div class="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-4 shadow-sm">
+          <h3 class="text-base font-black text-slate-900 dark:text-white border-b-2 border-slate-100 dark:border-slate-800 pb-3">JSON 欄位設計規範 (Schema)</h3>
+          <div class="space-y-4 text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+            <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2">
+              <div class="font-bold text-indigo-700 dark:text-indigo-300">1. 如何切換「追蹤中」與「已出場固定」？</div>
+              <p class="text-slate-600 dark:text-slate-400">每個標的物件只需設定以下兩個欄位即可控制：</p>
+              <ul class="list-disc list-inside space-y-1 font-mono text-xs bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800">
                 <li>"status": "active" | "exited"</li>
                 <li>"trackLive": true | false</li>
               </ul>
-              <p class="text-slate-400 text-[11px] pt-1">當 <code class="text-amber-300">status: "exited"</code> 或 <code class="text-amber-300">trackLive: false</code> 時，系統會固定使用 <code class="text-amber-300">exitPrice</code> 計算最終損益，不再隨即時報價跳動。</p>
             </div>
 
-            <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5">
-              <div class="font-semibold text-indigo-300">2. 單一標的標準 JSON 範本</div>
-              <pre class="text-[11px] font-mono text-slate-300 overflow-x-auto custom-scrollbar bg-slate-900/90 p-2.5 rounded-lg border border-slate-800">{
-  "id": "tw-3231-20261012",
-  "symbol": "3231",
-  "market": "TWSE",
-  "name": "緯創",
-  "status": "active",
-  "trackLive": true,
-  "tradeDate": "2026-10-12",
-  "tradeTime": "12:45",
-  "actionLabel": "買進",
-  "shares": 1000,
-  "buyPrice": 189.0,
-  "currentPrice": 190.0,
-  "prevClose": 195.0,
-  "exitPrice": null,
-  "exitDate": null,
-  "targetPrice": 300.0,
-  "note": "AI伺服器業績大暴發，外資調目標價$300"
-}</pre>
-            </div>
-
-            <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
-              <div class="font-semibold text-indigo-300">3. 快速插入範本按鈕</div>
-              <p class="text-slate-400 text-[11px]">點擊下方按鈕可直接在 JSON 陣列新增一筆空白範本：</p>
-              <div class="grid grid-cols-2 gap-2 pt-1">
-                <button id="btnInsertActiveTemplate" type="button" class="px-2.5 py-2 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 text-xs font-medium transition">
+            <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2">
+              <div class="font-bold text-indigo-700 dark:text-indigo-300">2. 快速插入範本按鈕</div>
+              <p class="text-slate-600 dark:text-slate-400 text-xs">點擊下方按鈕可直接在 JSON 陣列新增一筆範本：</p>
+              <div class="grid grid-cols-1 gap-2.5 pt-1">
+                <button id="btnInsertActiveTemplate" type="button" class="px-3 py-2.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-600/20 dark:hover:bg-indigo-600/30 text-indigo-800 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-500/30 text-sm font-bold transition">
                   + 插入「買進追蹤」範本
                 </button>
-                <button id="btnInsertExitedTemplate" type="button" class="px-2.5 py-2 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 text-xs font-medium transition">
+                <button id="btnInsertExitedTemplate" type="button" class="px-3 py-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-500/15 dark:hover:bg-amber-500/25 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-500/30 text-sm font-bold transition">
                   + 插入「已出場」範本
                 </button>
               </div>
@@ -401,26 +395,26 @@
     <!-- TAB 3: CHARTS & ANALYTICS -->
     <section id="tab-analytics" class="tab-panel hidden space-y-6">
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+        <div class="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
           <div class="flex items-center justify-between mb-4">
             <div>
-              <h3 class="text-sm sm:text-base font-bold text-white">各標的報酬率排行 (ROI %)</h3>
-              <p class="text-xs text-slate-400">紅柱代表正報酬 (獲利)，綠柱代表負報酬 (虧損)</p>
+              <h3 class="text-lg font-black text-slate-900 dark:text-white">各標的報酬率排行 (ROI %)</h3>
+              <p class="text-sm text-slate-600 dark:text-slate-400">紅柱代表正報酬 (獲利)，綠柱代表負報酬 (虧損)</p>
             </div>
           </div>
-          <div class="relative h-72">
+          <div class="relative h-80">
             <canvas id="roiChartCanvas"></canvas>
           </div>
         </div>
 
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+        <div class="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
           <div class="flex items-center justify-between mb-4">
             <div>
-              <h3 class="text-sm sm:text-base font-bold text-white">追蹤中持倉市值配置比例</h3>
-              <p class="text-xs text-slate-400">依目前現價 × 股數計算各標的佔投資組合權重</p>
+              <h3 class="text-lg font-black text-slate-900 dark:text-white">追蹤中持倉市值配置比例</h3>
+              <p class="text-sm text-slate-600 dark:text-slate-400">依目前現價 × 股數計算各標的佔投資組合權重</p>
             </div>
           </div>
-          <div class="relative h-72">
+          <div class="relative h-80">
             <canvas id="allocationChartCanvas"></canvas>
           </div>
         </div>
@@ -430,92 +424,87 @@
   </main>
 
   <!-- MODAL: Add / Edit Position -->
-  <div id="positionModal" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto custom-scrollbar">
-      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-        <h3 id="modalTitle" class="text-base font-bold text-white">新增 / 編輯投資標的</h3>
-        <button id="btnCloseModal" type="button" class="text-slate-400 hover:text-white p-1">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-          </svg>
+  <div id="positionModal" class="fixed inset-0 z-50 hidden bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border-2 border-slate-300 dark:border-slate-700 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto custom-scrollbar">
+      <div class="flex items-center justify-between border-b-2 border-slate-200 dark:border-slate-800 pb-3">
+        <h3 id="modalTitle" class="text-lg font-black text-slate-900 dark:text-white">新增 / 編輯投資標的</h3>
+        <button id="btnCloseModal" type="button" class="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white p-1.5 text-lg font-bold">
+          ✕
         </button>
       </div>
 
-      <form id="positionForm" class="space-y-3.5 text-xs sm:text-sm">
+      <form id="positionForm" class="space-y-4 text-sm sm:text-base">
         <input type="hidden" id="formId">
 
-        <div class="grid grid-cols-2 gap-3">
+        <div class="grid grid-cols-2 gap-3.5">
           <div>
-            <label class="block text-xs text-slate-400 mb-1">股票代號 (Symbol) *</label>
-            <input id="formSymbol" type="text" required placeholder="例如: 2330 或 00981A" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white font-mono focus:outline-none focus:border-indigo-500">
+            <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">股票代號 (Symbol) *</label>
+            <input id="formSymbol" type="text" required placeholder="例如: 2330" class="w-full bg-slate-50 dark:bg-slate-950 border-2 border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white font-mono font-bold focus:outline-none focus:border-indigo-600">
           </div>
           <div>
-            <label class="block text-xs text-slate-400 mb-1">標的名稱 *</label>
-            <input id="formName" type="text" required placeholder="例如: 台積電" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-indigo-500">
+            <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">股票名稱 *</label>
+            <input id="formName" type="text" required placeholder="例如: 台積電" class="w-full bg-slate-50 dark:bg-slate-950 border-2 border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white font-bold focus:outline-none focus:border-indigo-600">
           </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-3">
+        <div class="grid grid-cols-2 gap-3.5">
           <div>
-            <label class="block text-xs text-slate-400 mb-1">追蹤狀態 (Status) *</label>
-            <select id="formStatus" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-indigo-500">
-              <option value="active">追蹤中 (Active - 即時計算漲跌)</option>
-              <option value="exited">已出場固定 (Exited - 不再追蹤)</option>
+            <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">追蹤狀態 *</label>
+            <select id="formStatus" class="w-full bg-slate-50 dark:bg-slate-950 border-2 border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2.5 text-slate-900 dark:text-white font-bold focus:outline-none focus:border-indigo-600">
+              <option value="active">追蹤中 (即時計算漲跌)</option>
+              <option value="exited">已出場固定 (不再追蹤)</option>
             </select>
           </div>
           <div>
-            <label class="block text-xs text-slate-400 mb-1">動作標籤</label>
-            <input id="formActionLabel" type="text" placeholder="買進 / 補進 / 出清 / 調賣" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-indigo-500">
+            <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">交易類別標籤</label>
+            <input id="formActionLabel" type="text" placeholder="買進 / 補進 / 出清" class="w-full bg-slate-50 dark:bg-slate-950 border-2 border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white font-bold focus:outline-none focus:border-indigo-600">
           </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-3">
+        <div class="grid grid-cols-2 gap-3.5">
           <div>
-            <label class="block text-xs text-slate-400 mb-1">交易日期</label>
-            <input id="formTradeDate" type="date" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white font-mono focus:outline-none focus:border-indigo-500">
+            <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">交易日期</label>
+            <input id="formTradeDate" type="date" class="w-full bg-slate-50 dark:bg-slate-950 border-2 border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white font-mono font-bold focus:outline-none focus:border-indigo-600">
           </div>
           <div>
-            <label class="block text-xs text-slate-400 mb-1">股數 (Shares, 1張=1000股) *</label>
-            <input id="formShares" type="number" step="1" min="1" required placeholder="1000" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white font-mono focus:outline-none focus:border-indigo-500">
+            <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">持有股數 (1張=1000股) *</label>
+            <input id="formShares" type="number" step="1" min="1" required placeholder="1000" class="w-full bg-slate-50 dark:bg-slate-950 border-2 border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white font-mono font-bold focus:outline-none focus:border-indigo-600">
           </div>
         </div>
 
         <div class="grid grid-cols-3 gap-3">
           <div>
-            <label class="block text-xs text-slate-400 mb-1">買進成本價 ($)</label>
-            <input id="formBuyPrice" type="number" step="0.01" placeholder="選填或輸入成本" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white font-mono focus:outline-none focus:border-indigo-500">
+            <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">買進成本 ($)</label>
+            <input id="formBuyPrice" type="number" step="0.01" placeholder="成本價" class="w-full bg-slate-50 dark:bg-slate-950 border-2 border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2.5 text-slate-900 dark:text-white font-mono font-bold focus:outline-none focus:border-indigo-600">
           </div>
           <div>
-            <label class="block text-xs text-slate-400 mb-1">目前現價 ($)</label>
-            <input id="formCurrentPrice" type="number" step="0.01" required placeholder="現價" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white font-mono focus:outline-none focus:border-indigo-500">
+            <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">目前現價 ($)</label>
+            <input id="formCurrentPrice" type="number" step="0.01" required placeholder="現價" class="w-full bg-slate-50 dark:bg-slate-950 border-2 border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2.5 text-slate-900 dark:text-white font-mono font-bold focus:outline-none focus:border-indigo-600">
           </div>
           <div>
-            <label class="block text-xs text-slate-400 mb-1">昨日收盤價 ($)</label>
-            <input id="formPrevClose" type="number" step="0.01" placeholder="計算今日漲跌" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white font-mono focus:outline-none focus:border-indigo-500">
+            <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">昨日收盤 ($)</label>
+            <input id="formPrevClose" type="number" step="0.01" placeholder="昨收價" class="w-full bg-slate-50 dark:bg-slate-950 border-2 border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2.5 text-slate-900 dark:text-white font-mono font-bold focus:outline-none focus:border-indigo-600">
           </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-3 p-3 rounded-xl bg-amber-500/5 border border-amber-500/20">
+        <div class="grid grid-cols-2 gap-3.5 p-3.5 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-300 dark:border-amber-500/30">
           <div>
-            <label class="block text-xs text-amber-300 mb-1">出場成交價 (已出場固定用)</label>
-            <input id="formExitPrice" type="number" step="0.01" placeholder="若已出場請填出場價" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-amber-200 font-mono focus:outline-none focus:border-amber-500">
+            <label class="block text-sm font-bold text-amber-900 dark:text-amber-300 mb-1">出場成交價 (已出場填寫)</label>
+            <input id="formExitPrice" type="number" step="0.01" placeholder="賣出成交價" class="w-full bg-white dark:bg-slate-950 border-2 border-amber-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-amber-200 font-mono font-bold focus:outline-none focus:border-amber-500">
           </div>
           <div>
-            <label class="block text-xs text-indigo-300 mb-1">目標價 (Target Price)</label>
-            <input id="formTargetPrice" type="number" step="0.01" placeholder="選填, 如 $300" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-indigo-200 font-mono focus:outline-none focus:border-indigo-500">
+            <label class="block text-sm font-bold text-indigo-900 dark:text-indigo-300 mb-1">目標價 (選填)</label>
+            <input id="formTargetPrice" type="number" step="0.01" placeholder="例如: 300" class="w-full bg-white dark:bg-slate-950 border-2 border-indigo-200 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-indigo-200 font-mono font-bold focus:outline-none focus:border-indigo-500">
           </div>
         </div>
 
-        <div>
-          <label class="block text-xs text-slate-400 mb-1">交易備註 / 投資筆記</label>
-          <input id="formNote" type="text" placeholder="例如：AI伺服器業績大暴發，外資調目標價$300" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-indigo-500">
-        </div>
+        <input type="hidden" id="formNote">
 
-        <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
-          <button id="btnCancelModal" type="button" class="px-4 py-2 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300">
+        <div class="flex items-center justify-end gap-3 pt-3 border-t-2 border-slate-200 dark:border-slate-800">
+          <button id="btnCancelModal" type="button" class="px-5 py-2.5 rounded-xl text-sm font-bold bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-300">
             取消
           </button>
-          <button type="submit" class="px-4 py-2 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm">
+          <button type="submit" class="px-5 py-2.5 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm">
             儲存變更並更新 JSON
           </button>
         </div>
@@ -524,40 +513,40 @@
   </div>
 
   <!-- MODAL: Quick Exit Lock -->
-  <div id="exitLockModal" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-4">
-      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-        <h3 class="text-base font-bold text-amber-300">鎖定出場價格（不再追蹤即時波動）</h3>
-        <button id="btnCloseExitModal" type="button" class="text-slate-400 hover:text-white p-1">✕</button>
+  <div id="exitLockModal" class="fixed inset-0 z-50 hidden bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border-2 border-slate-300 dark:border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b-2 border-slate-200 dark:border-slate-800 pb-3">
+        <h3 class="text-lg font-black text-amber-700 dark:text-amber-300">鎖定出場價格（不再追蹤波動）</h3>
+        <button id="btnCloseExitModal" type="button" class="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white p-1 font-bold">✕</button>
       </div>
-      <form id="exitLockForm" class="space-y-3 text-xs sm:text-sm">
+      <form id="exitLockForm" class="space-y-4 text-sm sm:text-base">
         <input type="hidden" id="exitModalId">
-        <p id="exitModalDesc" class="text-slate-300"></p>
+        <p id="exitModalDesc" class="text-slate-700 dark:text-slate-300 font-medium leading-relaxed"></p>
         <div>
-          <label class="block text-xs text-slate-400 mb-1">最終出場成交價 ($) *</label>
-          <input id="exitModalPrice" type="number" step="0.01" required class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-amber-300 font-mono text-base focus:outline-none focus:border-amber-500">
+          <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">最終賣出成交價 ($) *</label>
+          <input id="exitModalPrice" type="number" step="0.01" required class="w-full bg-slate-50 dark:bg-slate-950 border-2 border-amber-400 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-amber-800 dark:text-amber-300 font-mono text-lg font-black focus:outline-none focus:border-amber-500">
         </div>
         <div>
-          <label class="block text-xs text-slate-400 mb-1">出場日期</label>
-          <input id="exitModalDate" type="date" required class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white font-mono focus:outline-none focus:border-amber-500">
+          <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">出場日期</label>
+          <input id="exitModalDate" type="date" required class="w-full bg-slate-50 dark:bg-slate-950 border-2 border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white font-mono font-bold focus:outline-none focus:border-amber-500">
         </div>
-        <div class="flex items-center justify-end gap-2 pt-2">
-          <button id="btnCancelExitModal" type="button" class="px-3.5 py-2 rounded-lg text-xs font-medium bg-slate-800 text-slate-300">取消</button>
-          <button type="submit" class="px-4 py-2 rounded-lg text-xs font-semibold bg-amber-500 hover:bg-amber-400 text-slate-950">確認出場並固定價格</button>
+        <div class="flex items-center justify-end gap-3 pt-2">
+          <button id="btnCancelExitModal" type="button" class="px-4 py-2.5 rounded-xl text-sm font-bold bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-300">取消</button>
+          <button type="submit" class="px-5 py-2.5 rounded-xl text-sm font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-sm">確認出場並固定價格</button>
         </div>
       </form>
     </div>
   </div>
 
   <!-- Toast Notification -->
-  <div id="toastBox" class="fixed bottom-5 right-5 z-50 hidden px-4 py-2.5 rounded-xl bg-slate-800 border border-indigo-500/40 text-xs sm:text-sm text-white shadow-xl flex items-center gap-2">
-    <span class="w-2 h-2 rounded-full bg-indigo-400"></span>
+  <div id="toastBox" class="fixed bottom-5 right-5 z-50 hidden px-5 py-3 rounded-2xl bg-slate-900 dark:bg-slate-800 border-2 border-indigo-500 text-sm sm:text-base font-bold text-white shadow-2xl flex items-center gap-2.5">
+    <span class="w-2.5 h-2.5 rounded-full bg-indigo-400"></span>
     <span id="toastMessage">已更新</span>
   </div>
 
   <script>
     // =========================================================================
-    // 1. DEFAULT JSON DATA STRUCTURE (Designed for easy add/delete/exit locking)
+    // 1. DEFAULT JSON DATA STRUCTURE (Clean, without note text clutter)
     // =========================================================================
     const DEFAULT_PORTFOLIO_JSON = {
       schemaVersion: "1.0",
@@ -586,8 +575,7 @@
           prevClose: 3145.0,
           exitPrice: null,
           exitDate: null,
-          targetPrice: null,
-          note: "10:00時掛買奇鋐5股$3355(+5)，最低跌至$3285，好在收盤$3400。"
+          targetPrice: null
         },
         {
           id: "tw-2368-20260930",
@@ -606,8 +594,7 @@
           prevClose: 1195.0,
           exitPrice: null,
           exitDate: null,
-          targetPrice: 1610.0,
-          note: "買進百股金像電$1120。"
+          targetPrice: 1610.0
         },
         {
           id: "tw-3231-20261012",
@@ -626,8 +613,7 @@
           prevClose: 190.0,
           exitPrice: null,
           exitDate: null,
-          targetPrice: 300.0,
-          note: "買進緯創$189。AI伺服器業績大暴發，外資調目標價$300。(未註明股數預設1張)"
+          targetPrice: 300.0
         },
         {
           id: "tw-8021-20261019",
@@ -646,8 +632,7 @@
           prevClose: 479.0,
           exitPrice: null,
           exitDate: null,
-          targetPrice: 570.0,
-          note: "買進尖點$534。(未註明股數預設1張)"
+          targetPrice: 570.0
         },
         {
           id: "tw-00981A-20261020",
@@ -666,8 +651,7 @@
           prevClose: 28.19,
           exitPrice: null,
           exitDate: null,
-          targetPrice: null,
-          note: "補進 00981A主動統一台股增長 1張$29.15。"
+          targetPrice: null
         },
         {
           id: "tw-2330-20261020",
@@ -686,8 +670,7 @@
           prevClose: 2385.0,
           exitPrice: null,
           exitDate: null,
-          targetPrice: null,
-          note: "再補進台積電 5 股$2410。"
+          targetPrice: null
         },
         {
           id: "tw-1101-20261027",
@@ -706,8 +689,7 @@
           prevClose: 26.80,
           exitPrice: null,
           exitDate: null,
-          targetPrice: 33.0,
-          note: "今天 13:35 買進台泥 200 股$28。"
+          targetPrice: 33.0
         },
         {
           id: "tw-6234-20261019-exit",
@@ -726,8 +708,7 @@
           prevClose: 50.40,
           exitPrice: 50.0,
           exitDate: "2026-10-19",
-          targetPrice: null,
-          note: "10/19 出清高僑$50（已固定出場不再追蹤；可點編輯補入當初買進成本與股數）"
+          targetPrice: null
         },
         {
           id: "tw-2330-20260929-exit",
@@ -746,23 +727,72 @@
           prevClose: 2385.0,
           exitPrice: 2480.0,
           exitDate: "2026-09-29",
-          targetPrice: null,
-          note: "9/29 13:28時調賣台積電10股$2480(-10)，收盤$2475（已固定出場價$2480不再追蹤）"
+          targetPrice: null
         }
       ]
     };
 
     // =========================================================================
-    // 2. APPLICATION STATE & STORAGE
+    // 2. STATE & THEME MANAGEMENT (Default: Dark Mode)
     // =========================================================================
-    const STORAGE_KEY = "tw_portfolio_tracker_json_v1";
+    const STORAGE_KEY = "tw_portfolio_tracker_json_v2";
+    const THEME_KEY = "tw_portfolio_theme_v2";
+
     let portfolioData = loadPortfolioState();
     let currentFilter = "all";
     let searchQuery = "";
     let simInterval = null;
     let roiChart = null;
     let allocationChart = null;
-    let lastFlashMap = {}; // id -> 'up' | 'down'
+    let lastFlashMap = {};
+    let isDarkMode = true; // 預設為深色模式
+
+    function initTheme() {
+      try {
+        const savedTheme = localStorage.getItem(THEME_KEY);
+        if (savedTheme === "light") {
+          isDarkMode = false;
+        } else {
+          isDarkMode = true;
+        }
+      } catch (e) {
+        isDarkMode = true;
+      }
+      applyThemeUI();
+    }
+
+    function applyThemeUI() {
+      const htmlEl = document.documentElement;
+      const btn = document.getElementById("btnThemeToggle");
+      const knob = document.getElementById("themeToggleKnob");
+
+      if (isDarkMode) {
+        htmlEl.classList.add("dark");
+        if (btn) btn.setAttribute("aria-checked", "true");
+        if (knob) {
+          knob.classList.remove("translate-x-0");
+          knob.classList.add("translate-x-7");
+        }
+      } else {
+        htmlEl.classList.remove("dark");
+        if (btn) btn.setAttribute("aria-checked", "false");
+        if (knob) {
+          knob.classList.remove("translate-x-7");
+          knob.classList.add("translate-x-0");
+        }
+      }
+      if (roiChart || allocationChart) {
+        renderCharts();
+      }
+    }
+
+    function toggleTheme() {
+      isDarkMode = !isDarkMode;
+      try {
+        localStorage.setItem(THEME_KEY, isDarkMode ? "dark" : "light");
+      } catch (e) {}
+      applyThemeUI();
+    }
 
     function loadPortfolioState() {
       try {
@@ -773,18 +803,14 @@
             return parsed;
           }
         }
-      } catch (err) {
-        console.warn("localStorage unavailable or invalid, using default JSON.");
-      }
+      } catch (err) {}
       return JSON.parse(JSON.stringify(DEFAULT_PORTFOLIO_JSON));
     }
 
     function savePortfolioState() {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(portfolioData));
-      } catch (err) {
-        // Ignore storage errors in sandboxed iframes
-      }
+      } catch (err) {}
     }
 
     function showToast(msg) {
@@ -799,7 +825,7 @@
     }
 
     // =========================================================================
-    // 3. FORMATTING HELPERS (Taiwan Stock Red Up / Green Down)
+    // 3. FORMATTING HELPERS (Red Up / Green Down)
     // =========================================================================
     function fmtCurrency(num, digits = 0) {
       if (num === null || num === undefined || isNaN(num)) return "—";
@@ -833,17 +859,21 @@
     }
 
     function getTwColorClass(val) {
-      if (val === null || val === undefined || isNaN(val) || val === 0) return "text-slate-300";
-      return val > 0 ? "text-rose-400" : "text-emerald-400";
+      if (val === null || val === undefined || isNaN(val) || val === 0) {
+        return "text-slate-700 dark:text-slate-300";
+      }
+      return val > 0
+        ? "text-red-600 dark:text-rose-400"
+        : "text-emerald-600 dark:text-emerald-400";
     }
 
     function getTwBadgeClass(val) {
       if (val === null || val === undefined || isNaN(val) || val === 0) {
-        return "bg-slate-800 text-slate-300 border border-slate-700";
+        return "bg-slate-200 text-slate-800 dark:bg-slate-800 dark:text-slate-300 border border-slate-300 dark:border-slate-700";
       }
       return val > 0
-        ? "bg-rose-500/15 text-rose-300 border border-rose-500/30"
-        : "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30";
+        ? "bg-red-100 text-red-800 border-2 border-red-300 dark:bg-rose-500/20 dark:text-rose-300 dark:border-rose-500/40"
+        : "bg-emerald-100 text-emerald-900 border-2 border-emerald-300 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/40";
     }
 
     // =========================================================================
@@ -884,7 +914,6 @@
       const unrealizedRoi = totalCost > 0 ? (unrealizedPnl / totalCost) * 100 : 0;
       const dayChangePct = totalPrevVal > 0 ? (totalDayChange / totalPrevVal) * 100 : 0;
 
-      // Closed / Exited calculations
       let closedProceeds = 0;
       let closedRealizedPnl = 0;
       let closedWithCostCount = 0;
@@ -905,19 +934,19 @@
 
       const pnlEl = document.getElementById("kpiUnrealizedPnl");
       pnlEl.textContent = fmtSignedCurrency(unrealizedPnl);
-      pnlEl.className = `text-2xl font-bold font-mono ${getTwColorClass(unrealizedPnl)}`;
+      pnlEl.className = `text-2xl sm:text-3xl font-black font-mono ${getTwColorClass(unrealizedPnl)}`;
 
       const roiBadge = document.getElementById("kpiActiveRoiBadge");
       roiBadge.textContent = fmtPct(unrealizedRoi);
-      roiBadge.className = `text-xs px-2 py-0.5 rounded font-mono font-semibold ${getTwBadgeClass(unrealizedRoi)}`;
+      roiBadge.className = `text-sm px-2.5 py-1 rounded-lg font-mono font-bold ${getTwBadgeClass(unrealizedRoi)}`;
 
       const dayAmtEl = document.getElementById("kpiDayChangeAmt");
       dayAmtEl.textContent = fmtSignedCurrency(totalDayChange);
-      dayAmtEl.className = `text-2xl font-bold font-mono ${getTwColorClass(totalDayChange)}`;
+      dayAmtEl.className = `text-2xl sm:text-3xl font-black font-mono ${getTwColorClass(totalDayChange)}`;
 
       const dayPctEl = document.getElementById("kpiDayChangePct");
       dayPctEl.textContent = fmtPct(dayChangePct);
-      dayPctEl.className = `text-xs px-2 py-0.5 rounded font-mono font-semibold ${getTwBadgeClass(dayChangePct)}`;
+      dayPctEl.className = `text-sm px-2.5 py-1 rounded-lg font-mono font-bold ${getTwBadgeClass(dayChangePct)}`;
 
       document.getElementById("kpiLastUpdated").textContent = portfolioData.lastUpdated || "--:--:--";
 
@@ -927,10 +956,10 @@
       const realizedEl = document.getElementById("kpiRealizedPnl");
       if (closedWithCostCount > 0) {
         realizedEl.textContent = fmtSignedCurrency(closedRealizedPnl);
-        realizedEl.className = `font-mono font-semibold ${getTwColorClass(closedRealizedPnl)}`;
+        realizedEl.className = `font-mono font-bold ${getTwColorClass(closedRealizedPnl)}`;
       } else {
         realizedEl.textContent = "點編輯可補買價算損益";
-        realizedEl.className = "font-mono text-slate-400";
+        realizedEl.className = "font-mono text-slate-500 dark:text-slate-400";
       }
     }
 
@@ -943,7 +972,6 @@
         return (
           String(p.symbol || "").toLowerCase().includes(q) ||
           String(p.name || "").toLowerCase().includes(q) ||
-          String(p.note || "").toLowerCase().includes(q) ||
           String(p.actionLabel || "").toLowerCase().includes(q)
         );
       });
@@ -951,18 +979,17 @@
       const activeList = filtered.filter(p => p.status === "active" && p.trackLive !== false);
       const exitedList = filtered.filter(p => p.status === "exited" || p.trackLive === false);
 
-      // Visibility based on status filter
       const activeWrapper = document.getElementById("activeSectionWrapper");
       const exitedWrapper = document.getElementById("exitedSectionWrapper");
       activeWrapper.classList.toggle("hidden", currentFilter === "exited");
       exitedWrapper.classList.toggle("hidden", currentFilter === "active");
 
-      // Render Active Table
+      // Render Active Table (Only Date & Target Price in column 8, no note text)
       const activeBody = document.getElementById("activeTableBody");
       if (activeList.length === 0) {
         activeBody.innerHTML = `
           <tr>
-            <td colspan="10" class="py-8 text-center text-slate-500 text-xs">
+            <td colspan="9" class="py-10 text-center text-slate-500 dark:text-slate-400 text-base font-medium">
               目前沒有符合條件的「追蹤中」標的。可點擊右上方「新增標的」或從下方已出場清單恢復追蹤。
             </td>
           </tr>
@@ -985,37 +1012,35 @@
           if (p.targetPrice && Number(p.targetPrice) > 0) {
             const upside = ((Number(p.targetPrice) - cur) / cur) * 100;
             targetHtml = `
-              <div class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 text-[11px] font-mono mb-1">
-                <span>目標價 ${fmtPrice(p.targetPrice)}</span>
-                <span class="text-indigo-400">(${upside >= 0 ? "+" : ""}${upside.toFixed(1)}%)</span>
+              <div class="mt-1">
+                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-indigo-100 text-indigo-900 dark:bg-indigo-500/20 dark:text-indigo-300 font-mono text-xs font-bold">
+                  🎯 目標價 ${fmtPrice(p.targetPrice)} (${upside >= 0 ? "+" : ""}${upside.toFixed(0)}%)
+                </span>
               </div>
             `;
           }
 
           return `
-            <tr class="hover:bg-slate-800/40 transition ${flashCls}">
-              <td class="py-3.5 px-4">
-                <div class="flex items-center gap-2">
-                  <span class="px-2 py-0.5 rounded bg-slate-800 text-indigo-300 font-mono font-bold text-xs border border-slate-700">${escapeHtml(p.symbol)}</span>
-                  <span class="font-bold text-white">${escapeHtml(p.name)}</span>
-                </div>
-                <div class="mt-1 flex items-center gap-1.5">
-                  <span class="text-[11px] px-1.5 py-0.2 rounded bg-rose-500/15 text-rose-300 border border-rose-500/20">${escapeHtml(p.actionLabel || "買進")}</span>
-                  ${p.sharesAssumed ? `<span class="text-[10px] px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30" title="截圖未註明股數，預設1張(1000股)，可點編輯修改">預設1張</span>` : ""}
+            <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition ${flashCls}">
+              <td class="py-4 px-4">
+                <div class="text-lg font-black text-slate-900 dark:text-white leading-snug">${escapeHtml(p.name)}</div>
+                <div class="mt-1 flex flex-wrap items-center gap-1.5">
+                  <span class="px-2 py-0.5 rounded-md bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-indigo-300 font-mono font-bold text-xs">${escapeHtml(p.symbol)}</span>
+                  <span class="text-xs font-bold px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300">${escapeHtml(p.actionLabel || "買進")}</span>
+                  ${p.sharesAssumed ? `<span class="text-xs font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 dark:bg-amber-500/20 dark:text-amber-300">預設1張</span>` : ""}
                 </div>
               </td>
-              <td class="py-3.5 px-3 font-mono text-xs text-slate-300">
-                <div>${escapeHtml(p.tradeDate || "—")}</div>
-                <div class="text-[11px] text-slate-500">${escapeHtml(p.tradeTime || "")}</div>
+
+              <td class="py-4 px-3 text-right font-mono">
+                <div class="text-base font-black text-slate-900 dark:text-white">${shares.toLocaleString("zh-TW")} 股</div>
+                <div class="text-xs font-medium text-slate-500 dark:text-slate-400 mt-0.5">成本 ${fmtCurrency(shares * buy)}</div>
               </td>
-              <td class="py-3.5 px-3 text-right font-mono text-white">
-                <div>${shares.toLocaleString("zh-TW")} 股</div>
-                <div class="text-[11px] text-slate-500">成本 ${fmtCurrency(shares * buy)}</div>
-              </td>
-              <td class="py-3.5 px-3 text-right font-mono text-slate-200">
+
+              <td class="py-4 px-3 text-right font-mono text-base font-bold text-slate-800 dark:text-slate-200">
                 ${fmtPrice(buy)}
               </td>
-              <td class="py-3.5 px-3 text-right">
+
+              <td class="py-4 px-3 text-right">
                 <div class="inline-flex items-center justify-end">
                   <input
                     type="number"
@@ -1023,44 +1048,46 @@
                     data-action="quick-price"
                     data-id="${escapeHtml(p.id)}"
                     value="${cur}"
-                    title="直接輸入最新成交價即時試算報酬率"
-                    class="w-24 text-right bg-slate-950 border border-slate-700 hover:border-indigo-500 focus:border-indigo-400 rounded-lg px-2 py-1 font-mono font-bold text-sm ${getTwColorClass(dayDiff)} focus:outline-none"
+                    title="點擊可直接修改現價"
+                    class="w-28 text-right bg-slate-50 dark:bg-slate-950 border-2 border-slate-300 dark:border-slate-700 hover:border-indigo-500 focus:border-indigo-600 rounded-xl px-2.5 py-1.5 font-mono font-black text-base ${getTwColorClass(dayDiff)} focus:outline-none shadow-inner"
                   >
                 </div>
-                <div class="text-[10px] text-slate-500 font-mono mt-0.5">市值 ${fmtCurrency(shares * cur)}</div>
+                <div class="text-xs text-slate-500 dark:text-slate-400 font-mono mt-1">市值 ${fmtCurrency(shares * cur)}</div>
               </td>
-              <td class="py-3.5 px-3 text-right font-mono">
-                <div class="font-semibold ${getTwColorClass(dayDiff)}">
+
+              <td class="py-4 px-3 text-right font-mono">
+                <div class="text-base font-black ${getTwColorClass(dayDiff)}">
                   ${dayDiff > 0 ? "▲ +" : (dayDiff < 0 ? "▼ " : "")}${dayDiff.toFixed(2)}
                 </div>
-                <div class="text-[11px] ${getTwColorClass(dayPct)}">(${fmtPct(dayPct)})</div>
+                <div class="text-xs font-bold ${getTwColorClass(dayPct)}">(${fmtPct(dayPct)})</div>
               </td>
-              <td class="py-3.5 px-3 text-right font-mono">
-                <div class="font-bold ${getTwColorClass(pnl)}">${fmtSignedCurrency(pnl)}</div>
+
+              <td class="py-4 px-3 text-right font-mono">
+                <div class="text-lg font-black ${getTwColorClass(pnl)}">${fmtSignedCurrency(pnl)}</div>
+                <div class="text-xs font-bold text-slate-500 dark:text-slate-400">${pnl > 0 ? "目前獲利" : (pnl < 0 ? "目前帳面虧損" : "持平")}</div>
               </td>
-              <td class="py-3.5 px-3 text-right font-mono">
-                <span class="inline-block px-2.5 py-1 rounded-lg font-bold text-xs ${getTwBadgeClass(roi)}">
+
+              <td class="py-4 px-3 text-right font-mono">
+                <span class="inline-block px-3 py-1.5 rounded-xl font-black text-sm ${getTwBadgeClass(roi)}">
                   ${fmtPct(roi)}
                 </span>
               </td>
-              <td class="py-3.5 px-4 max-w-xs">
+
+              <td class="py-4 px-4 whitespace-nowrap">
+                <div class="font-mono text-sm font-bold text-slate-700 dark:text-slate-300">📅 ${escapeHtml(p.tradeDate || "—")}</div>
                 ${targetHtml}
-                <div class="text-xs text-slate-400 line-clamp-2">${escapeHtml(p.note || "")}</div>
               </td>
-              <td class="py-3.5 px-4 text-right whitespace-nowrap">
-                <div class="inline-flex items-center gap-1">
-                  <button type="button" data-action="lock-exit" data-id="${escapeHtml(p.id)}" class="px-2.5 py-1 rounded-lg text-xs font-medium bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 transition" title="將此標的設為已出場，固定價格不再跳動">
+
+              <td class="py-4 px-4 text-right whitespace-nowrap">
+                <div class="inline-flex flex-wrap items-center justify-end gap-1.5">
+                  <button type="button" data-action="lock-exit" data-id="${escapeHtml(p.id)}" class="px-3 py-2 rounded-xl text-xs font-bold bg-amber-100 hover:bg-amber-200 text-amber-950 dark:bg-amber-500/20 dark:hover:bg-amber-500/30 dark:text-amber-300 border border-amber-300 dark:border-amber-500/30 transition">
                     鎖定出場
                   </button>
-                  <button type="button" data-action="edit-pos" data-id="${escapeHtml(p.id)}" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition" title="編輯標的">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                    </svg>
+                  <button type="button" data-action="edit-pos" data-id="${escapeHtml(p.id)}" class="px-3 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 transition">
+                    編輯
                   </button>
-                  <button type="button" data-action="delete-pos" data-id="${escapeHtml(p.id)}" class="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-900/60 text-slate-400 hover:text-rose-300 transition" title="刪除標的">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                    </svg>
+                  <button type="button" data-action="delete-pos" data-id="${escapeHtml(p.id)}" class="px-2.5 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-rose-100 dark:bg-slate-800 dark:hover:bg-rose-900/60 text-slate-600 hover:text-rose-700 dark:text-slate-400 dark:hover:text-rose-300 border border-slate-300 dark:border-slate-700 transition">
+                    刪除
                   </button>
                 </div>
               </td>
@@ -1069,12 +1096,12 @@
         }).join("");
       }
 
-      // Render Exited Table
+      // Render Exited Table (Clean without note column)
       const exitedBody = document.getElementById("exitedTableBody");
       if (exitedList.length === 0) {
         exitedBody.innerHTML = `
           <tr>
-            <td colspan="10" class="py-8 text-center text-slate-500 text-xs">
+            <td colspan="8" class="py-10 text-center text-slate-500 dark:text-slate-400 text-base font-medium">
               目前沒有已出場固定標的。當您將上方標的點擊「鎖定出場」後，即會歸檔於此且不再隨大盤跳動。
             </td>
           </tr>
@@ -1091,55 +1118,43 @@
           const proceeds = shares * exitP;
 
           return `
-            <tr class="hover:bg-slate-800/30 transition text-slate-300">
-              <td class="py-3.5 px-4">
-                <div class="flex items-center gap-2">
-                  <span class="px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-mono font-bold text-xs border border-slate-700">${escapeHtml(p.symbol)}</span>
-                  <span class="font-bold text-slate-200">${escapeHtml(p.name)}</span>
-                </div>
+            <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition">
+              <td class="py-4 px-4">
+                <div class="text-lg font-black text-slate-800 dark:text-slate-200">${escapeHtml(p.name)}</div>
+                <span class="inline-block mt-1 px-2 py-0.5 rounded-md bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-400 font-mono font-bold text-xs">${escapeHtml(p.symbol)}</span>
               </td>
-              <td class="py-3.5 px-3 font-mono text-xs text-slate-400">
-                <div>${escapeHtml(p.exitDate || p.tradeDate || "—")}</div>
-                <div class="text-[11px] text-slate-500">${escapeHtml(p.tradeTime || "")}</div>
-              </td>
-              <td class="py-3.5 px-3">
-                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-500/15 text-amber-300 border border-amber-500/30">
-                  <span>🔒 已出場固定</span>
+              <td class="py-4 px-3">
+                <div class="font-mono text-sm font-bold text-slate-700 dark:text-slate-300">📅 ${escapeHtml(p.exitDate || p.tradeDate || "—")}</div>
+                <span class="inline-flex items-center gap-1 mt-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-900 dark:bg-amber-500/15 dark:text-amber-300 border border-amber-300 dark:border-amber-500/30">
+                  🔒 已出場固定
                 </span>
               </td>
-              <td class="py-3.5 px-3 text-right font-mono">
-                <div>${shares.toLocaleString("zh-TW")} 股</div>
-                <div class="text-[11px] text-slate-500">回收 ${fmtCurrency(proceeds)}</div>
+              <td class="py-4 px-3 text-right font-mono">
+                <div class="text-base font-black text-slate-800 dark:text-slate-200">${shares.toLocaleString("zh-TW")} 股</div>
+                <div class="text-xs font-medium text-slate-500 dark:text-slate-400">回收 ${fmtCurrency(proceeds)}</div>
               </td>
-              <td class="py-3.5 px-3 text-right font-mono">
-                ${hasBuy ? fmtPrice(buy) : `<button type="button" data-action="edit-pos" data-id="${escapeHtml(p.id)}" class="text-xs text-indigo-400 hover:underline">+ 補填買價</button>`}
+              <td class="py-4 px-3 text-right font-mono text-base font-bold">
+                ${hasBuy ? fmtPrice(buy) : `<button type="button" data-action="edit-pos" data-id="${escapeHtml(p.id)}" class="px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-500/15 text-xs font-bold text-indigo-700 dark:text-indigo-300 hover:underline border border-indigo-200 dark:border-indigo-500/30">+ 補填買價</button>`}
               </td>
-              <td class="py-3.5 px-3 text-right font-mono font-bold text-amber-300">
+              <td class="py-4 px-3 text-right font-mono text-base font-black text-amber-700 dark:text-amber-300">
                 ${fmtPrice(exitP)}
               </td>
-              <td class="py-3.5 px-3 text-right font-mono font-bold ${hasBuy ? getTwColorClass(pnl) : "text-slate-500"}">
+              <td class="py-4 px-3 text-right font-mono text-base font-black ${hasBuy ? getTwColorClass(pnl) : "text-slate-400"}">
                 ${hasBuy ? fmtSignedCurrency(pnl) : "待補成本"}
               </td>
-              <td class="py-3.5 px-3 text-right font-mono">
-                ${hasBuy ? `<span class="inline-block px-2.5 py-1 rounded-lg font-bold text-xs ${getTwBadgeClass(roi)}">${fmtPct(roi)}</span>` : `<span class="text-xs text-slate-500">—</span>`}
+              <td class="py-4 px-3 text-right font-mono">
+                ${hasBuy ? `<span class="inline-block px-3 py-1.5 rounded-xl font-black text-sm ${getTwBadgeClass(roi)}">${fmtPct(roi)}</span>` : `<span class="text-sm text-slate-400">—</span>`}
               </td>
-              <td class="py-3.5 px-4 max-w-xs text-xs text-slate-400">
-                ${escapeHtml(p.note || "")}
-              </td>
-              <td class="py-3.5 px-4 text-right whitespace-nowrap">
-                <div class="inline-flex items-center gap-1">
-                  <button type="button" data-action="reactivate-pos" data-id="${escapeHtml(p.id)}" class="px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-800 hover:bg-indigo-600/30 text-slate-300 hover:text-indigo-200 border border-slate-700 transition" title="恢復為即時追蹤狀態">
+              <td class="py-4 px-4 text-right whitespace-nowrap">
+                <div class="inline-flex flex-wrap items-center justify-end gap-1.5">
+                  <button type="button" data-action="reactivate-pos" data-id="${escapeHtml(p.id)}" class="px-3 py-2 rounded-xl text-xs font-bold bg-indigo-50 hover:bg-indigo-100 dark:bg-slate-800 dark:hover:bg-indigo-600/30 text-indigo-800 dark:text-slate-200 border border-indigo-200 dark:border-slate-700 transition">
                     恢復追蹤
                   </button>
-                  <button type="button" data-action="edit-pos" data-id="${escapeHtml(p.id)}" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition" title="編輯成本或股數">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                    </svg>
+                  <button type="button" data-action="edit-pos" data-id="${escapeHtml(p.id)}" class="px-3 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 transition">
+                    編輯
                   </button>
-                  <button type="button" data-action="delete-pos" data-id="${escapeHtml(p.id)}" class="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-900/60 text-slate-400 hover:text-rose-300 transition" title="刪除紀錄">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                    </svg>
+                  <button type="button" data-action="delete-pos" data-id="${escapeHtml(p.id)}" class="px-2.5 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-rose-100 dark:bg-slate-800 dark:hover:bg-rose-900/60 text-slate-600 hover:text-rose-700 dark:text-slate-400 dark:hover:text-rose-300 border border-slate-300 dark:border-slate-700 transition">
+                    刪除
                   </button>
                 </div>
               </td>
@@ -1161,8 +1176,9 @@
     function renderCharts() {
       const positions = portfolioData.positions || [];
       const activeList = positions.filter(p => p.status === "active" && p.trackLive !== false);
+      const axisColor = isDarkMode ? "#cbd5e1" : "#334155";
+      const gridColor = isDarkMode ? "rgba(51,65,85,0.35)" : "rgba(203,213,225,0.6)";
 
-      // Chart 1: ROI Bar Chart (include active + exited that have buyPrice)
       const roiCandidates = positions.filter(p => p.buyPrice && Number(p.buyPrice) > 0);
       const roiLabels = roiCandidates.map(p => `${p.name}(${p.symbol})`);
       const roiValues = roiCandidates.map(p => {
@@ -1172,7 +1188,7 @@
           : Number(p.currentPrice);
         return Number((((refPrice - buy) / buy) * 100).toFixed(2));
       });
-      const roiColors = roiValues.map(v => v >= 0 ? "rgba(239, 68, 68, 0.8)" : "rgba(16, 185, 129, 0.8)");
+      const roiColors = roiValues.map(v => v >= 0 ? "rgba(220, 38, 38, 0.85)" : "rgba(5, 150, 105, 0.85)");
 
       const roiCtx = document.getElementById("roiChartCanvas").getContext("2d");
       if (roiChart) roiChart.destroy();
@@ -1184,7 +1200,7 @@
             label: "報酬率 (%)",
             data: roiValues,
             backgroundColor: roiColors,
-            borderRadius: 6
+            borderRadius: 8
           }]
         },
         options: {
@@ -1194,23 +1210,23 @@
             legend: { display: false }
           },
           scales: {
-            x: { ticks: { color: "#94a3b8" }, grid: { color: "rgba(51,65,85,0.3)" } },
+            x: { ticks: { color: axisColor, font: { weight: "bold" } }, grid: { color: gridColor } },
             y: {
               ticks: {
-                color: "#94a3b8",
+                color: axisColor,
+                font: { weight: "bold" },
                 callback: val => val + "%"
               },
-              grid: { color: "rgba(51,65,85,0.3)" }
+              grid: { color: gridColor }
             }
           }
         }
       });
 
-      // Chart 2: Market Value Allocation Doughnut Chart
       const allocLabels = activeList.map(p => `${p.name} (${p.symbol})`);
       const allocData = activeList.map(p => Math.round((Number(p.shares) || 0) * (Number(p.currentPrice) || 0)));
       const palette = [
-        "#6366f1", "#ec4899", "#f59e0b", "#10b981", "#3b82f6", "#8b5cf6", "#14b8a6", "#f43f5e"
+        "#4f46e5", "#e11d48", "#d97706", "#059669", "#2563eb", "#7c3aed", "#0d9488", "#db2777"
       ];
 
       const allocCtx = document.getElementById("allocationChartCanvas").getContext("2d");
@@ -1222,7 +1238,7 @@
           datasets: [{
             data: allocData,
             backgroundColor: palette.slice(0, allocData.length),
-            borderColor: "#0f172a",
+            borderColor: isDarkMode ? "#0f172a" : "#ffffff",
             borderWidth: 2
           }]
         },
@@ -1232,7 +1248,7 @@
           plugins: {
             legend: {
               position: "right",
-              labels: { color: "#cbd5e1", font: { size: 11 } }
+              labels: { color: axisColor, font: { size: 13, weight: "bold" } }
             }
           }
         }
@@ -1256,7 +1272,7 @@
       const statusText = document.getElementById("statusText");
       icon.classList.add("animate-spin");
       btn.disabled = true;
-      statusText.textContent = "正在嘗試連線 Yahoo Finance / TWSE 取得最新報價...";
+      statusText.textContent = "正在連線取得最新報價...";
 
       const activeList = (portfolioData.positions || []).filter(p => p.status === "active" && p.trackLive !== false);
       let updatedCount = 0;
@@ -1286,19 +1302,16 @@
               updatedCount++;
             }
           }
-        } catch (e) {
-          // Fallback to micro tick simulation if CORS or sandbox blocks external call
-        }
+        } catch (e) {}
       }
 
       const nowStr = new Date().toLocaleTimeString("zh-TW", { hour12: false });
-      portfolioData.lastUpdated = `2026-10-27 ${nowStr}`;
+      portfolioData.lastUpdated = `2026-10-28 ${nowStr}`;
 
       if (updatedCount > 0) {
-        statusText.textContent = `已同步 ${updatedCount} 檔網路最新報價 (${nowStr})`;
+        statusText.textContent = `已同步 ${updatedCount} 檔最新報價 (${nowStr})`;
         showToast(`成功更新 ${updatedCount} 檔即時報價`);
       } else {
-        // Apply realistic tick refresh on active stocks so user gets immediate visual feedback
         activeList.forEach(p => {
           const cur = Number(p.currentPrice) || 100;
           const deltaPct = (Math.random() - 0.48) * 0.008;
@@ -1308,8 +1321,8 @@
             p.currentPrice = nextP;
           }
         });
-        statusText.textContent = `已更新盤中報價快照 (${nowStr})`;
-        showToast("已刷新追蹤中標的報價與報酬率 (已出場標的維持固定)");
+        statusText.textContent = `已更新盤中報價 (${nowStr})`;
+        showToast("已刷新追蹤中標的報價與報酬率");
       }
 
       icon.classList.remove("animate-spin");
@@ -1327,22 +1340,21 @@
         clearInterval(simInterval);
         simInterval = null;
         label.textContent = "開啟盤中模擬跳動";
-        dot.className = "w-2 h-2 rounded-full bg-emerald-400";
+        dot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block";
         statusText.textContent = "盤中模擬已暫停";
         showToast("已停止盤中模擬跳動");
         return;
       }
 
       label.textContent = "停止模擬跳動 (進行中)";
-      dot.className = "w-2 h-2 rounded-full bg-rose-500 animate-ping";
-      statusText.textContent = "盤中即時跳動模擬中 (僅追蹤中標的會變動)...";
-      showToast("已開啟盤中模擬跳動！注意「已出場標的」價格將保持固定不變");
+      dot.className = "w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping inline-block";
+      statusText.textContent = "盤中即時跳動模擬中 (已出場標的維持固定)...";
+      showToast("已開啟盤中模擬跳動！");
 
       simInterval = setInterval(() => {
         const activeList = (portfolioData.positions || []).filter(p => p.status === "active" && p.trackLive !== false);
         if (activeList.length === 0) return;
 
-        // Randomly pick 1 to 3 active stocks to tick
         const count = Math.min(activeList.length, Math.floor(Math.random() * 3) + 1);
         for (let i = 0; i < count; i++) {
           const idx = Math.floor(Math.random() * activeList.length);
@@ -1356,7 +1368,7 @@
         }
 
         const nowStr = new Date().toLocaleTimeString("zh-TW", { hour12: false });
-        portfolioData.lastUpdated = `2026-10-27 ${nowStr}`;
+        portfolioData.lastUpdated = `2026-10-28 ${nowStr}`;
         savePortfolioState();
         renderAll();
       }, 2200);
@@ -1366,41 +1378,37 @@
     // 6. EVENT LISTENERS & INTERACTIONS
     // =========================================================================
     function initEvents() {
-      // Top buttons
+      document.getElementById("btnThemeToggle").addEventListener("click", toggleTheme);
       document.getElementById("btnLiveFetch").addEventListener("click", syncNetworkQuotes);
       document.getElementById("btnSimToggle").addEventListener("click", toggleMarketSimulation);
       document.getElementById("btnOpenAddModal").addEventListener("click", () => openPositionModal(null));
       document.getElementById("btnQuickJumpJson").addEventListener("click", () => switchMainTab("tab-json"));
 
-      // Main Tabs
       document.querySelectorAll(".main-tab-btn").forEach(btn => {
         btn.addEventListener("click", () => {
           switchMainTab(btn.dataset.tab);
         });
       });
 
-      // Status Filter Buttons
       document.querySelectorAll(".status-filter-btn").forEach(btn => {
         btn.addEventListener("click", () => {
           currentFilter = btn.dataset.filter;
           document.querySelectorAll(".status-filter-btn").forEach(b => {
             if (b.dataset.filter === currentFilter) {
-              b.className = "status-filter-btn px-2.5 py-1 rounded-md text-xs font-medium bg-slate-800 text-white";
+              b.className = "status-filter-btn px-3 py-1.5 rounded-lg text-sm font-bold bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm";
             } else {
-              b.className = "status-filter-btn px-2.5 py-1 rounded-md text-xs font-medium text-slate-400 hover:text-white";
+              b.className = "status-filter-btn px-3 py-1.5 rounded-lg text-sm font-bold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white";
             }
           });
           renderTables();
         });
       });
 
-      // Search Input
       document.getElementById("searchInput").addEventListener("input", e => {
         searchQuery = e.target.value;
         renderTables();
       });
 
-      // Table Event Delegation (Quick Price Change, Lock Exit, Reactivate, Edit, Delete)
       document.getElementById("activeTableBody").addEventListener("change", e => {
         const input = e.target.closest("input[data-action='quick-price']");
         if (!input) return;
@@ -1420,17 +1428,14 @@
       document.getElementById("activeTableBody").addEventListener("click", handleTableActionClick);
       document.getElementById("exitedTableBody").addEventListener("click", handleTableActionClick);
 
-      // Modal Events
       document.getElementById("btnCloseModal").addEventListener("click", closePositionModal);
       document.getElementById("btnCancelModal").addEventListener("click", closePositionModal);
       document.getElementById("positionForm").addEventListener("submit", handlePositionFormSubmit);
 
-      // Exit Lock Modal Events
       document.getElementById("btnCloseExitModal").addEventListener("click", closeExitLockModal);
       document.getElementById("btnCancelExitModal").addEventListener("click", closeExitLockModal);
       document.getElementById("exitLockForm").addEventListener("submit", handleExitLockSubmit);
 
-      // JSON Editor Events
       const jsonTextarea = document.getElementById("jsonEditorTextarea");
       jsonTextarea.addEventListener("input", validateJsonTextareaLive);
 
@@ -1450,9 +1455,9 @@
 
       document.querySelectorAll(".main-tab-btn").forEach(btn => {
         if (btn.dataset.tab === tabId) {
-          btn.className = "main-tab-btn px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-indigo-600 text-white shadow-sm transition flex items-center gap-1.5";
+          btn.className = "main-tab-btn px-4 py-2.5 rounded-xl text-sm sm:text-base font-bold bg-indigo-600 text-white shadow-sm transition flex items-center gap-1.5";
         } else {
-          btn.className = "main-tab-btn px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800 transition flex items-center gap-1.5";
+          btn.className = "main-tab-btn px-4 py-2.5 rounded-xl text-sm sm:text-base font-bold bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border-2 border-slate-300 dark:border-slate-800 transition flex items-center gap-1.5";
         }
       });
 
@@ -1480,7 +1485,7 @@
         portfolioData.positions = portfolioData.positions.filter(p => p.id !== id);
         savePortfolioState();
         renderAll();
-        showToast(`已從 JSON 移除 ${pos.name} (${pos.symbol})`);
+        showToast(`已移除 ${pos.name} (${pos.symbol})`);
       } else if (action === "lock-exit") {
         openExitLockModal(pos);
       } else if (action === "reactivate-pos") {
@@ -1509,7 +1514,7 @@
         document.getElementById("formName").value = pos.name || "";
         document.getElementById("formStatus").value = (pos.status === "exited" || pos.trackLive === false) ? "exited" : "active";
         document.getElementById("formActionLabel").value = pos.actionLabel || "買進";
-        document.getElementById("formTradeDate").value = pos.tradeDate || "2026-10-27";
+        document.getElementById("formTradeDate").value = pos.tradeDate || "2026-10-28";
         document.getElementById("formShares").value = pos.shares || 1000;
         document.getElementById("formBuyPrice").value = pos.buyPrice ?? "";
         document.getElementById("formCurrentPrice").value = pos.currentPrice ?? "";
@@ -1524,7 +1529,7 @@
         document.getElementById("formName").value = "";
         document.getElementById("formStatus").value = "active";
         document.getElementById("formActionLabel").value = "買進";
-        document.getElementById("formTradeDate").value = "2026-10-27";
+        document.getElementById("formTradeDate").value = "2026-10-28";
         document.getElementById("formShares").value = 1000;
         document.getElementById("formBuyPrice").value = "";
         document.getElementById("formCurrentPrice").value = "";
@@ -1548,7 +1553,7 @@
       const name = document.getElementById("formName").value.trim();
       const status = document.getElementById("formStatus").value;
       const actionLabel = document.getElementById("formActionLabel").value.trim() || (status === "exited" ? "出清" : "買進");
-      const tradeDate = document.getElementById("formTradeDate").value || "2026-10-27";
+      const tradeDate = document.getElementById("formTradeDate").value || "2026-10-28";
       const shares = parseInt(document.getElementById("formShares").value, 10) || 1000;
 
       const buyRaw = document.getElementById("formBuyPrice").value;
@@ -1562,7 +1567,6 @@
       const prevClose = prevRaw !== "" ? parseFloat(prevRaw) : currentPrice;
       const exitPrice = exitRaw !== "" ? parseFloat(exitRaw) : (status === "exited" ? currentPrice : null);
       const targetPrice = targetRaw !== "" ? parseFloat(targetRaw) : null;
-      const note = document.getElementById("formNote").value.trim();
 
       if (id) {
         const existing = portfolioData.positions.find(p => p.id === id);
@@ -1583,7 +1587,6 @@
             existing.exitDate = tradeDate;
           }
           existing.targetPrice = targetPrice;
-          existing.note = note;
         }
         showToast(`已更新 ${name} (${symbol})`);
       } else {
@@ -1604,11 +1607,10 @@
           prevClose,
           exitPrice,
           exitDate: status === "exited" ? tradeDate : null,
-          targetPrice,
-          note
+          targetPrice
         };
         portfolioData.positions.unshift(newPos);
-        showToast(`已新增 ${name} (${symbol}) 至 JSON 清單`);
+        showToast(`已新增 ${name} (${symbol})`);
       }
 
       savePortfolioState();
@@ -1620,7 +1622,7 @@
       document.getElementById("exitModalId").value = pos.id;
       document.getElementById("exitModalDesc").textContent = `將「${pos.name} (${pos.symbol})」轉為已出場狀態，並固定其出場價格，未來不再隨即時報價變動：`;
       document.getElementById("exitModalPrice").value = pos.currentPrice || pos.buyPrice || "";
-      document.getElementById("exitModalDate").value = "2026-10-27";
+      document.getElementById("exitModalDate").value = "2026-10-28";
       document.getElementById("exitLockModal").classList.remove("hidden");
     }
 
@@ -1632,7 +1634,7 @@
       e.preventDefault();
       const id = document.getElementById("exitModalId").value;
       const exitPrice = parseFloat(document.getElementById("exitModalPrice").value);
-      const exitDate = document.getElementById("exitModalDate").value || "2026-10-27";
+      const exitDate = document.getElementById("exitModalDate").value || "2026-10-28";
 
       const pos = portfolioData.positions.find(p => p.id === id);
       if (pos && !isNaN(exitPrice)) {
@@ -1643,7 +1645,7 @@
         pos.actionLabel = "已出清鎖定";
         savePortfolioState();
         renderAll();
-        showToast(`已鎖定 ${pos.name}(${pos.symbol}) 出場價 $${exitPrice}，不再追蹤波動`);
+        showToast(`已鎖定 ${pos.name}(${pos.symbol}) 出場價 $${exitPrice}`);
       }
       closeExitLockModal();
     }
@@ -1661,12 +1663,12 @@
           throw new Error("根物件必須包含 positions 陣列");
         }
         badge.textContent = "JSON 語法正確";
-        badge.className = "px-2 py-0.5 text-[11px] rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-mono";
+        badge.className = "px-2.5 py-0.5 text-xs rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/30 font-mono";
         errBox.classList.add("hidden");
         return parsed;
       } catch (err) {
         badge.textContent = "JSON 語法錯誤";
-        badge.className = "px-2 py-0.5 text-[11px] rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 font-mono";
+        badge.className = "px-2.5 py-0.5 text-xs rounded-full bg-rose-100 text-rose-800 dark:bg-rose-500/20 dark:text-rose-300 border border-rose-300 dark:border-rose-500/40 font-mono";
         errBox.textContent = "解析錯誤：" + err.message;
         errBox.classList.remove("hidden");
         return null;
@@ -1741,7 +1743,7 @@
       portfolioData = JSON.parse(JSON.stringify(DEFAULT_PORTFOLIO_JSON));
       savePortfolioState();
       renderAll();
-      showToast("已還原為預設 9 筆截圖標的資料");
+      showToast("已還原為預設 9 筆標的資料");
     }
 
     function insertJsonTemplate(mode) {
@@ -1753,8 +1755,8 @@
         name: "聯發科 (範例)",
         status: isExited ? "exited" : "active",
         trackLive: !isExited,
-        tradeDate: "2026-10-27",
-        tradeTime: "13:30",
+        tradeDate: "2026-10-28",
+        tradeTime: "10:00",
         actionLabel: isExited ? "出清出場" : "買進",
         shares: 100,
         sharesAssumed: false,
@@ -1762,9 +1764,8 @@
         currentPrice: 1350.0,
         prevClose: 1330.0,
         exitPrice: isExited ? 1350.0 : null,
-        exitDate: isExited ? "2026-10-27" : null,
-        targetPrice: isExited ? null : 1500.0,
-        note: isExited ? "範例：已獲利了結出場，固定價格不再追蹤" : "範例：可在 JSON 直接修改代號與價格"
+        exitDate: isExited ? "2026-10-28" : null,
+        targetPrice: isExited ? null : 1500.0
       };
       portfolioData.positions.unshift(template);
       savePortfolioState();
@@ -1775,8 +1776,8 @@
       showToast(`已插入一筆「${isExited ? "已出場固定" : "買進追蹤"}」JSON 範本`);
     }
 
-    // Boot application
     window.addEventListener("DOMContentLoaded", () => {
+      initTheme();
       initEvents();
       renderAll();
     });
