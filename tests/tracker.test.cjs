@@ -26,7 +26,7 @@ function app(fetch = async () => { throw Error('offline'); }) {
 test('embedded fallback and deployed JSON agree and validate', () => {
   const a=app();
   assert.deepEqual(JSON.parse(a.run('JSON.stringify(DEFAULT_PORTFOLIO_JSON)')), seed);
-  assert.equal(a.run('validatePortfolio(portfolioData).positions.length'),18);
+  assert.equal(a.run('validatePortfolio(portfolioData).positions.length'),19);
 });
 test('reject malformed holdings before applying data', () => {
   const a=app();
@@ -52,9 +52,9 @@ test('partial success uses daily previous close, records quote time and leaves e
   await a.run('syncNetworkQuotes()');
   assert.equal(a.run('portfolioData.positions[0].currentPrice'),3200);
   assert.equal(a.run('portfolioData.positions[0].prevClose'),3100);
-  assert.equal(a.run('portfolioData.positions[1].currentPrice'),1155);
+  assert.equal(a.run('portfolioData.positions[1].currentPrice'),1125);
   assert.equal(a.run('JSON.stringify(portfolioData.positions.filter(p=>p.status==="exited"))'),exited);
-  assert.match(a.element('statusText').textContent,/1\/16/);
+  assert.match(a.element('statusText').textContent,/1\/17/);
   assert.match(a.run('quoteLabel(portfolioData.positions[0])'),/Yahoo/);
 });
 test('invalid payload never overwrites a stored price', async()=>{
@@ -67,7 +67,7 @@ test('exiting a position while its quote is in flight preserves it', async()=>{
     return {ok:true,json:async()=>({contents:JSON.stringify({chart:{result:[{meta:{regularMarketPrice:3400,regularMarketTime:1793151000}}]}})})};
   });
   await a.run('syncNetworkQuotes()');
-  assert.equal(a.run('portfolioData.positions[0].currentPrice'),3195);
+  assert.equal(a.run('portfolioData.positions[0].currentPrice'),3110);
   assert.equal(a.run('portfolioData.positions[0].exitPrice'),3333);
 });
 test('KPI matches sum of the active positions and excludes unknown exited costs',()=>{
@@ -179,8 +179,62 @@ test('groups multiple lots of the same symbol with weighted average cost, latest
   assert.equal(tsmc.latestDate, '2026-10-20');
 
   const nanya = groups.find(g => g.symbol === '2408');
-  assert.equal(nanya.items.length, 2);
-  assert.equal(nanya.totalShares, 110);
-  assert.equal(nanya.latestDate, '2026-10-15');
+  assert.equal(nanya.items.length, 3);
+  assert.equal(nanya.totalShares, 210);
+  assert.equal(nanya.latestDate, '2026-10-29');
   assert.equal(nanya.maxTargetPrice, 570);
+});
+
+test('only renders second-level detail toggle for symbols with 2 or more lots', () => {
+  const a = app();
+  a.run('renderTables()');
+  const desktopHtml = a.element('activeTableBody').innerHTML;
+  const mobileHtml = a.element('activeMobileCards').innerHTML;
+
+  // Single-lot symbols (e.g., 3017, 2368, 3231) must NOT have toggle-group buttons or "明細 (1)" / "共 1 筆"
+  assert.ok(!desktopHtml.includes('明細 (1)'));
+  assert.ok(!mobileHtml.includes('分批明細 (1)'));
+  assert.ok(!desktopHtml.includes('共 1 筆'));
+  assert.ok(!desktopHtml.includes('data-group-key="active:TWSE:3017"'));
+  assert.ok(!mobileHtml.includes('data-group-key="active:TWSE:3017"'));
+
+  // Multi-lot symbols (2330 has 4 lots, 2408 has 2 lots, 6147 has 2 lots) MUST have toggle-group buttons
+  assert.ok(desktopHtml.includes('data-group-key="active:TWSE:2330"'));
+  assert.ok(desktopHtml.includes('▼ 明細 (4)'));
+  assert.ok(desktopHtml.includes('data-group-key="active:TWSE:2408"'));
+  assert.ok(desktopHtml.includes('▼ 明細 (3)'));
+  assert.ok(desktopHtml.includes('data-group-key="active:TPEX:6147"'));
+});
+
+test('prioritizes TWSE MIS realtime intraday quote over FinMind EOD yesterday close', async () => {
+  const a = app(async url => {
+    const decoded = decodeURIComponent(url);
+    if (decoded.includes('mis.twse.com.tw/stock/api/getStockInfo.jsp')) {
+      return {
+        ok: true,
+        json: async () => ({
+          msgArray: [
+            { c: '2330', z: '2420.00', y: '2425.00', tlong: '1793244000000' }
+          ]
+        })
+      };
+    }
+    if (url.includes('api.finmindtrade.com') && url.includes('data_id=2330')) {
+      return {
+        ok: true,
+        json: async () => ({
+          data: [
+            { date: '2026-10-27', close: 2400, spread: 10 },
+            { date: '2026-10-28', close: 2425, spread: 25 }
+          ]
+        })
+      };
+    }
+    throw Error('offline');
+  });
+  await a.run('syncNetworkQuotes()');
+  const tsmc = a.run('portfolioData.positions.find(p => p.symbol === "2330" && p.status === "active")');
+  assert.equal(tsmc.currentPrice, 2420);
+  assert.equal(tsmc.prevClose, 2425);
+  assert.equal(tsmc.quoteSource, 'TWSE MIS');
 });
