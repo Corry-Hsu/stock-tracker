@@ -329,10 +329,10 @@
       "note": "10/27 13:35 買進台泥 200 股$28。"
     },
     {
-      "id": "tw-2408-20261029",
-      "symbol": "2408",
+      "id": "tw-1303-20261029",
+      "symbol": "1303",
       "market": "TWSE",
-      "name": "南亞科",
+      "name": "南亞",
       "status": "active",
       "trackLive": true,
       "tradeDate": "2026-10-29",
@@ -341,12 +341,12 @@
       "shares": 100,
       "sharesAssumed": false,
       "buyPrice": 318.0,
-      "currentPrice": 474,
-      "prevClose": 477,
+      "currentPrice": 313,
+      "prevClose": 318,
       "exitPrice": null,
       "exitDate": null,
-      "targetPrice": 570,
-      "note": "10/29 買進100股南亞科（以當日均價$318.00計）。"
+      "targetPrice": null,
+      "note": "10/29 買進100股南亞（以當日均價$318.00計）。"
     },
     {
       "id": "tw-6234-20261019-exit",
