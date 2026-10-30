@@ -52,7 +52,7 @@ test('partial success uses daily previous close, records quote time and leaves e
   await a.run('syncNetworkQuotes()');
   assert.equal(a.run('portfolioData.positions[0].currentPrice'),3200);
   assert.equal(a.run('portfolioData.positions[0].prevClose'),3100);
-  assert.equal(a.run('portfolioData.positions[1].currentPrice'),1125);
+  assert.equal(a.run('portfolioData.positions[1].currentPrice'),1015);
   assert.equal(a.run('JSON.stringify(portfolioData.positions.filter(p=>p.status==="exited"))'),exited);
   assert.match(a.element('statusText').textContent,/1\/17/);
   assert.match(a.run('quoteLabel(portfolioData.positions[0])'),/Yahoo/);
@@ -67,7 +67,7 @@ test('exiting a position while its quote is in flight preserves it', async()=>{
     return {ok:true,json:async()=>({contents:JSON.stringify({chart:{result:[{meta:{regularMarketPrice:3400,regularMarketTime:1793151000}}]}})})};
   });
   await a.run('syncNetworkQuotes()');
-  assert.equal(a.run('portfolioData.positions[0].currentPrice'),3110);
+  assert.equal(a.run('portfolioData.positions[0].currentPrice'),3010);
   assert.equal(a.run('portfolioData.positions[0].exitPrice'),3333);
 });
 test('KPI matches sum of the active positions and excludes unknown exited costs',()=>{
@@ -170,7 +170,7 @@ test('falls back to TWSE MIS batch endpoint when per-stock Yahoo and FinMind fai
 test('groups multiple lots of the same symbol with weighted average cost, latest date, and max target price', () => {
   const a = app();
   const groups = a.run('groupPositionsBySymbol(portfolioData.positions.filter(p => p.status === "active"), "active")');
-  assert.equal(groups.length, 11);
+  assert.equal(groups.length, 12);
   const tsmc = groups.find(g => g.symbol === '2330');
   assert.equal(tsmc.items.length, 4);
   assert.equal(tsmc.totalShares, 55);
@@ -179,10 +179,13 @@ test('groups multiple lots of the same symbol with weighted average cost, latest
   assert.equal(tsmc.latestDate, '2026-10-20');
 
   const nanya = groups.find(g => g.symbol === '2408');
-  assert.equal(nanya.items.length, 3);
-  assert.equal(nanya.totalShares, 210);
-  assert.equal(nanya.latestDate, '2026-10-29');
+  assert.equal(nanya.items.length, 2);
+  assert.equal(nanya.totalShares, 110);
+  assert.equal(nanya.latestDate, '2026-10-15');
   assert.equal(nanya.maxTargetPrice, 570);
+  const nanyaPlastics = groups.find(g => g.symbol === '1303');
+  assert.equal(nanyaPlastics.items.length, 1);
+  assert.equal(nanyaPlastics.totalShares, 100);
 });
 
 test('only renders second-level detail toggle for symbols with 2 or more lots', () => {
@@ -202,7 +205,8 @@ test('only renders second-level detail toggle for symbols with 2 or more lots', 
   assert.ok(desktopHtml.includes('data-group-key="active:TWSE:2330"'));
   assert.ok(desktopHtml.includes('▼ 明細 (4)'));
   assert.ok(desktopHtml.includes('data-group-key="active:TWSE:2408"'));
-  assert.ok(desktopHtml.includes('▼ 明細 (3)'));
+  assert.ok(desktopHtml.includes('▼ 明細 (2)'));
+  assert.ok(!desktopHtml.includes('data-group-key="active:TWSE:1303"'));
   assert.ok(desktopHtml.includes('data-group-key="active:TPEX:6147"'));
 });
 
