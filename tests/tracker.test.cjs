@@ -26,7 +26,7 @@ function app(fetch = async () => { throw Error('offline'); }) {
 test('embedded fallback and deployed JSON agree and validate', () => {
   const a=app();
   assert.deepEqual(JSON.parse(a.run('JSON.stringify(DEFAULT_PORTFOLIO_JSON)')), seed);
-  assert.equal(a.run('validatePortfolio(portfolioData).positions.length'),19);
+  assert.equal(a.run('validatePortfolio(portfolioData).positions.length'),22);
 });
 test('reject malformed holdings before applying data', () => {
   const a=app();
@@ -52,9 +52,9 @@ test('partial success uses daily previous close, records quote time and leaves e
   await a.run('syncNetworkQuotes()');
   assert.equal(a.run('portfolioData.positions[0].currentPrice'),3200);
   assert.equal(a.run('portfolioData.positions[0].prevClose'),3100);
-  assert.equal(a.run('portfolioData.positions[1].currentPrice'),1015);
+  assert.equal(a.run('portfolioData.positions[1].currentPrice'),1020);
   assert.equal(a.run('JSON.stringify(portfolioData.positions.filter(p=>p.status==="exited"))'),exited);
-  assert.match(a.element('statusText').textContent,/1\/17/);
+  assert.match(a.element('statusText').textContent,/1\/20/);
   assert.match(a.run('quoteLabel(portfolioData.positions[0])'),/Yahoo/);
 });
 test('invalid payload never overwrites a stored price', async()=>{
@@ -67,7 +67,7 @@ test('exiting a position while its quote is in flight preserves it', async()=>{
     return {ok:true,json:async()=>({contents:JSON.stringify({chart:{result:[{meta:{regularMarketPrice:3400,regularMarketTime:1793151000}}]}})})};
   });
   await a.run('syncNetworkQuotes()');
-  assert.equal(a.run('portfolioData.positions[0].currentPrice'),3010);
+  assert.equal(a.run('portfolioData.positions[0].currentPrice'),3095);
   assert.equal(a.run('portfolioData.positions[0].exitPrice'),3333);
 });
 test('KPI matches sum of the active positions and excludes unknown exited costs',()=>{
@@ -101,12 +101,13 @@ test('runtime dates are dynamic and no random prices remain',()=>{
   assert.ok(!source.includes('Math.random'));
 });
 
-test('falls back to secondary Yahoo proxy or FinMind when primary AllOrigins proxy fails', async () => {
+test('falls back to secondary Yahoo proxy or tw.stock.yahoo.com HTML (iOS 股價報報 shortcut source) when primary AllOrigins proxy fails', async () => {
   const a = app(async url => {
+    const decoded = decodeURIComponent(url);
     // Primary allorigins/get fails
     if (url.includes('api.allorigins.win/get')) throw Error('AllOrigins 522 timeout');
-    // Secondary codetabs proxy succeeds for 2330.TW
-    if (url.includes('api.codetabs.com') && decodeURIComponent(url).includes('2330.TW')) {
+    // Secondary codetabs proxy succeeds for 2330.TW JSON
+    if (url.includes('api.codetabs.com') && decoded.includes('query1.finance.yahoo.com') && decoded.includes('2330.TW')) {
       return {
         ok: true,
         json: async () => ({
@@ -118,16 +119,11 @@ test('falls back to secondary Yahoo proxy or FinMind when primary AllOrigins pro
         })
       };
     }
-    // FinMind direct CORS API succeeds for 1101
-    if (url.includes('api.finmindtrade.com') && url.includes('data_id=1101')) {
+    // Yahoo 奇摩股市 HTML page (tw.stock.yahoo.com/quote/1101) succeeds via proxy (same structure as iOS 股價報報 shortcut)
+    if (decoded.includes('tw.stock.yahoo.com/quote/1101')) {
       return {
         ok: true,
-        json: async () => ({
-          data: [
-            { date: '2026-10-26', close: 27.5, spread: 0.2 },
-            { date: '2026-10-27', close: 28.6, spread: 1.1 }
-          ]
-        })
+        text: async () => '<div id="main-0-QuoteHeader-Proxy"><h1>台泥</h1><span class="Fz(32px) Fw(b)">28.60</span><span class="Fz(20px) C($c-trend-up)">1.10</span><span>昨收</span><span>27.50</span></div>'
       };
     }
     throw Error('offline');
@@ -139,10 +135,10 @@ test('falls back to secondary Yahoo proxy or FinMind when primary AllOrigins pro
   assert.equal(tsmc.prevClose, 2400);
   assert.equal(tcc.currentPrice, 28.6);
   assert.equal(tcc.prevClose, 27.5);
-  assert.match(a.run('quoteLabel(portfolioData.positions.find(p => p.symbol === "1101"))'), /FinMind/);
+  assert.match(a.run('quoteLabel(portfolioData.positions.find(p => p.symbol === "1101"))'), /Yahoo奇摩股市/);
 });
 
-test('falls back to TWSE MIS batch endpoint when per-stock Yahoo and FinMind fail', async () => {
+test('falls back to TWSE MIS batch endpoint when per-stock Yahoo endpoints fail', async () => {
   const a = app(async url => {
     if (decodeURIComponent(url).includes('mis.twse.com.tw/stock/api/getStockInfo.jsp')) {
       return {
@@ -172,11 +168,11 @@ test('groups multiple lots of the same symbol with weighted average cost, latest
   const groups = a.run('groupPositionsBySymbol(portfolioData.positions.filter(p => p.status === "active"), "active")');
   assert.equal(groups.length, 12);
   const tsmc = groups.find(g => g.symbol === '2330');
-  assert.equal(tsmc.items.length, 4);
-  assert.equal(tsmc.totalShares, 55);
-  assert.equal(tsmc.totalCost, 10 * 2500 + 20 * 2435 + 20 * 2432.5 + 5 * 2410);
-  assert.equal(Number(tsmc.avgBuyPrice.toFixed(2)), 2443.64);
-  assert.equal(tsmc.latestDate, '2026-10-20');
+  assert.equal(tsmc.items.length, 5);
+  assert.equal(tsmc.totalShares, 60);
+  assert.equal(tsmc.totalCost, 10 * 2500 + 20 * 2435 + 20 * 2432.5 + 5 * 2410 + 5 * 2370);
+  assert.equal(Number(tsmc.avgBuyPrice.toFixed(2)), 2437.50);
+  assert.equal(tsmc.latestDate, '2026-10-30');
 
   const nanya = groups.find(g => g.symbol === '2408');
   assert.equal(nanya.items.length, 2);
@@ -184,8 +180,13 @@ test('groups multiple lots of the same symbol with weighted average cost, latest
   assert.equal(nanya.latestDate, '2026-10-15');
   assert.equal(nanya.maxTargetPrice, 570);
   const nanyaPlastics = groups.find(g => g.symbol === '1303');
-  assert.equal(nanyaPlastics.items.length, 1);
-  assert.equal(nanyaPlastics.totalShares, 100);
+  assert.equal(nanyaPlastics.items.length, 2);
+  assert.equal(nanyaPlastics.totalShares, 150);
+  assert.equal(nanyaPlastics.avgBuyPrice, 310);
+  const etf = groups.find(g => g.symbol === '00981A');
+  assert.equal(etf.items.length, 2);
+  assert.equal(etf.totalShares, 2000);
+  assert.equal(Number(etf.avgBuyPrice.toFixed(2)), 27.84);
 });
 
 test('only renders second-level detail toggle for symbols with 2 or more lots', () => {
@@ -201,44 +202,17 @@ test('only renders second-level detail toggle for symbols with 2 or more lots', 
   assert.ok(!desktopHtml.includes('data-group-key="active:TWSE:3017"'));
   assert.ok(!mobileHtml.includes('data-group-key="active:TWSE:3017"'));
 
-  // Multi-lot symbols (2330 has 4 lots, 2408 has 2 lots, 6147 has 2 lots) MUST have toggle-group buttons
+  // Multi-lot symbols (2330 has 5 lots, 2408 has 2 lots, 6147 has 2 lots, 1303 has 2 lots, 00981A has 2 lots) MUST have toggle-group buttons
   assert.ok(desktopHtml.includes('data-group-key="active:TWSE:2330"'));
-  assert.ok(desktopHtml.includes('▼ 明細 (4)'));
+  assert.ok(desktopHtml.includes('▼ 明細 (5)'));
   assert.ok(desktopHtml.includes('data-group-key="active:TWSE:2408"'));
   assert.ok(desktopHtml.includes('▼ 明細 (2)'));
-  assert.ok(!desktopHtml.includes('data-group-key="active:TWSE:1303"'));
   assert.ok(desktopHtml.includes('data-group-key="active:TPEX:6147"'));
+  assert.ok(desktopHtml.includes('data-group-key="active:TWSE:1303"'));
+  assert.ok(desktopHtml.includes('data-group-key="active:TWSE:00981A"'));
 });
 
-test('prioritizes TWSE MIS realtime intraday quote over FinMind EOD yesterday close', async () => {
-  const a = app(async url => {
-    const decoded = decodeURIComponent(url);
-    if (decoded.includes('mis.twse.com.tw/stock/api/getStockInfo.jsp')) {
-      return {
-        ok: true,
-        json: async () => ({
-          msgArray: [
-            { c: '2330', z: '2420.00', y: '2425.00', tlong: '1793244000000' }
-          ]
-        })
-      };
-    }
-    if (url.includes('api.finmindtrade.com') && url.includes('data_id=2330')) {
-      return {
-        ok: true,
-        json: async () => ({
-          data: [
-            { date: '2026-10-27', close: 2400, spread: 10 },
-            { date: '2026-10-28', close: 2425, spread: 25 }
-          ]
-        })
-      };
-    }
-    throw Error('offline');
-  });
-  await a.run('syncNetworkQuotes()');
-  const tsmc = a.run('portfolioData.positions.find(p => p.symbol === "2330" && p.status === "active")');
-  assert.equal(tsmc.currentPrice, 2420);
-  assert.equal(tsmc.prevClose, 2425);
-  assert.equal(tsmc.quoteSource, 'TWSE MIS');
+test('FinMind EOD database is completely removed so intraday sync never overwrites prices with yesterday close', () => {
+  assert.ok(!source.includes('finmindtrade.com'));
+  assert.ok(!source.includes('TaiwanStockPrice'));
 });
