@@ -52,7 +52,7 @@ test('partial success uses daily previous close, records quote time and leaves e
   await a.run('syncNetworkQuotes()');
   assert.equal(a.run('portfolioData.positions[0].currentPrice'),3200);
   assert.equal(a.run('portfolioData.positions[0].prevClose'),3100);
-  assert.equal(a.run('portfolioData.positions[1].currentPrice'),1020);
+  assert.equal(a.run('portfolioData.positions[1].currentPrice'),1025);
   assert.equal(a.run('JSON.stringify(portfolioData.positions.filter(p=>p.status==="exited"))'),exited);
   assert.match(a.element('statusText').textContent,/1\/20/);
   assert.match(a.run('quoteLabel(portfolioData.positions[0])'),/Yahoo/);
@@ -67,7 +67,7 @@ test('exiting a position while its quote is in flight preserves it', async()=>{
     return {ok:true,json:async()=>({contents:JSON.stringify({chart:{result:[{meta:{regularMarketPrice:3400,regularMarketTime:1793151000}}]}})})};
   });
   await a.run('syncNetworkQuotes()');
-  assert.equal(a.run('portfolioData.positions[0].currentPrice'),3095);
+  assert.equal(a.run('portfolioData.positions[0].currentPrice'),3005);
   assert.equal(a.run('portfolioData.positions[0].exitPrice'),3333);
 });
 test('KPI matches sum of the active positions and excludes unknown exited costs',()=>{
@@ -215,4 +215,47 @@ test('only renders second-level detail toggle for symbols with 2 or more lots', 
 test('FinMind EOD database is completely removed so intraday sync never overwrites prices with yesterday close', () => {
   assert.ok(!source.includes('finmindtrade.com'));
   assert.ok(!source.includes('TaiwanStockPrice'));
+});
+
+test('updates multiple stocks in a single request via Cnyes direct-CORS batch API and Yahoo Taiwan ApacLibraCharts batch API', async () => {
+  let requestCount = 0;
+  const a = app(async url => {
+    requestCount++;
+    if (url.startsWith('https://ws.api.cnyes.com/ws/api/v1/quote/quotes/')) {
+      return {
+        ok: true,
+        json: async () => ({
+          statusCode: 200,
+          data: {
+            items: [
+              { '0': 'TWS:2330:STOCK', '200010': '2330', '6': 2345, '11': -25, '21': 2370, '200007': 1793584200 },
+              { '0': 'TWS:1303:STOCK', '200010': '1303', '6': 299.5, '11': 3.5, '21': 296, '200007': 1793584200 }
+            ]
+          }
+        })
+      };
+    }
+    if (decodeURIComponent(url).includes('FinanceChartService.ApacLibraCharts')) {
+      return {
+        ok: true,
+        json: async () => ({
+          data: [
+            { symbol: '6147.TWO', chart: { meta: { symbol: '6147.TWO', regularMarketPrice: 198.5, previousClose: 196, regularMarketTime: 1793584200 } } }
+          ]
+        })
+      };
+    }
+    throw Error('offline');
+  });
+  await a.run('syncNetworkQuotes()');
+  const tsmc = a.run('portfolioData.positions.find(p => p.symbol === "2330" && p.status === "active")');
+  const nanyaPlastics = a.run('portfolioData.positions.find(p => p.symbol === "1303" && p.status === "active")');
+  const chipbond = a.run('portfolioData.positions.find(p => p.symbol === "6147" && p.status === "active")');
+  assert.equal(tsmc.currentPrice, 2345);
+  assert.equal(tsmc.prevClose, 2370);
+  assert.match(a.run('quoteLabel(portfolioData.positions.find(p => p.symbol === "2330"))'), /鉅亨網即時/);
+  assert.equal(nanyaPlastics.currentPrice, 299.5);
+  assert.equal(chipbond.currentPrice, 198.5);
+  assert.equal(chipbond.prevClose, 196);
+  assert.match(a.run('quoteLabel(portfolioData.positions.find(p => p.symbol === "6147"))'), /Yahoo奇摩股市/);
 });

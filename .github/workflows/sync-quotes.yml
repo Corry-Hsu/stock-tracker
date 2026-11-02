@@ -1,0 +1,29 @@
+name: Sync Taiwan Stock Quotes
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Runs every 15 minutes during Taiwan market hours (Mon-Fri 01:00-05:45 UTC = 09:00-13:45 Taipei)
+    - cron: '*/15 1-5 * * 1-5'
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Fetch Live Quotes (Server-Side without Browser CORS)
+        run: node scripts/sync-quotes.mjs
+      - name: Run Unit Tests
+        run: node --test tests/tracker.test.cjs
+      - name: Commit & Push Updated Quotes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add portfolio.json index.html
+          git diff --staged --quiet || git commit -m "chore: sync live stock quotes" && git push
