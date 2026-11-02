@@ -6,15 +6,15 @@ const path = require('node:path');
 const html = fs.readFileSync(path.join(__dirname, '../index.html'), 'utf8');
 const source = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)].at(-1)[1];
 const seed = JSON.parse(fs.readFileSync(path.join(__dirname, '../portfolio.json'), 'utf8'));
-function app(fetch = async () => { throw Error('offline'); }) {
+function app(fetch = async () => { throw Error('offline'); }, timers = {}) {
   const nodes = new Map(), storage = new Map();
   const element = id => {
     if (!nodes.has(id)) nodes.set(id, { value: '', textContent: '', innerHTML: '', disabled: false,
       classList: { add(){}, remove(){}, contains(){ return true; }, toggle(){} }, setAttribute(){}, addEventListener(){} });
     return nodes.get(id);
   };
-  const ctx = vm.createContext({ console, Intl, Date, JSON, Number, String, Math, Set, AbortController,
-    fetch, setTimeout, clearTimeout,
+  const ctx = vm.createContext({ console, Intl, Date, JSON, Number, String, Math, Set, AbortController, URL,
+    fetch, setTimeout: timers.setTimeout || setTimeout, clearTimeout,
     localStorage: { getItem: k => storage.get(k), setItem: (k,v) => storage.set(k,v) },
     window: { addEventListener(){}, innerWidth: 1200 },
     document: { getElementById: element, querySelectorAll: () => [], documentElement: element('html') } });
@@ -258,4 +258,49 @@ test('updates multiple stocks in a single request via Cnyes direct-CORS batch AP
   assert.equal(chipbond.currentPrice, 198.5);
   assert.equal(chipbond.prevClose, 196);
   assert.match(a.run('quoteLabel(portfolioData.positions.find(p => p.symbol === "6147"))'), /Yahoo奇摩股市/);
+});
+
+
+test('parallel batch success renders while other sources are pending and deadline cancels them', async () => {
+  const signals = [];
+  let resolveSlow;
+  const a = app(async (url, options) => {
+    signals.push(options.signal);
+    if (url.startsWith('https://ws.api.cnyes.com/')) {
+      return { ok: true, json: async () => ({ data: { items: [
+        { '200010': '3017', '6': 3200, '21': 3100, '200007': 1793584200 }
+      ] } }) };
+    }
+    return new Promise(resolve => { resolveSlow = resolve; });
+  }, { setTimeout: (fn, ms) => setTimeout(fn, ms === 12000 ? 50 : 500) });
+  const pending = a.run('syncNetworkQuotes()');
+  await new Promise(resolve => setTimeout(resolve, 10));
+  assert.equal(a.run('portfolioData.positions[0].currentPrice'), 3200);
+  assert.match(a.element('statusText').textContent, /同步中/);
+  assert.equal(a.element('btnLiveFetch').disabled, true);
+  assert.ok(signals.length >= 3);
+  await pending;
+  assert.match(a.element('statusText').textContent, /12 秒上限/);
+  assert.equal(a.element('btnLiveFetch').disabled, false);
+  assert.ok(signals.slice(1).every(signal => signal.aborted));
+  const after = a.run('JSON.stringify(portfolioData)');
+  resolveSlow({ ok: true, json: async () => ({}) });
+  await new Promise(resolve => setTimeout(resolve, 0));
+  assert.equal(a.run('JSON.stringify(portfolioData)'), after);
+});
+
+test('request timeout covers stalled response bodies and records the source error', async () => {
+  const a = app(async () => ({ ok: true, text: () => new Promise(() => {}) }),
+    { setTimeout: fn => setTimeout(fn, 5) });
+  await assert.rejects(a.run(`fetchWithTimeout('https://example.com/quote', 4000,
+    { signal: new AbortController().signal, errors: new Set() })`), /請求逾時/);
+});
+
+test('failed sync reports HTTP errors and preserves saved prices', async () => {
+  const a = app(async () => ({ ok: false, status: 429 }));
+  const before = a.run('JSON.stringify(portfolioData)');
+  await a.run('syncNetworkQuotes()');
+  assert.equal(a.run('JSON.stringify(portfolioData)'), before);
+  assert.match(a.element('statusText').textContent, /HTTP 429/);
+  assert.match(a.element('statusText').textContent, /未更新/);
 });

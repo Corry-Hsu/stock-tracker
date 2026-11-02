@@ -2097,33 +2097,45 @@
     }
 
     // =========================================================================
-    // 5. BATCH-FIRST + DIRECT-CORS REAL-TIME QUOTE ENGINE
-    //    Why previous browser sync failed while iOS「股價報報」shortcut worked:
-    //    1. iOS Shortcuts run natively without browser CORS restrictions; browsers block direct requests unless the server sends Access-Control-Allow-Origin: *.
-    //    2. Firing 12 per-stock requests first exhausted free CORS proxy rate limits (e.g. CodeTabs 5 req / 5s -> HTTP 429) BEFORE the batch APIs ever ran!
-    //    Solution:
-    //    - Step 1 (Direct CORS + 1-Request Batch): 鉅亨網公開即時報價 API (ws.api.cnyes.com) — supports direct browser fetch (0 proxy needed) & fetches all 12 stocks in 1 request!
-    //    - Step 2 (1-Request Batch): Yahoo 奇摩股市台灣站批次 JSON API (ApacLibraCharts) — fetches all 12 stocks in 1 tiny 3KB JSON request!
-    //    - Step 3 (1-Request Batch): 證交所 / 櫃買中心官方 MIS 批次 API (mis.twse.com.tw) — runs before any per-stock loop so proxies are never rate-limited!
-    //    - Step 4 (Per-Stock Fallback): Yahoo 奇摩股市個股頁 & Yahoo Finance Chart API for any remaining unresolved symbol.
+    // 5. Bounded quote sync: parallel batch sources, then three fallback workers.
+    // Each request includes body reading in its timeout; the shared deadline cancels all work.
     // =========================================================================
-    async function fetchWithTimeout(url, timeoutMs = 5500) {
+    const QUOTE_REQUEST_TIMEOUT_MS = 4000;
+    const QUOTE_SYNC_TIMEOUT_MS = 12000;
+
+    async function fetchWithTimeout(url, timeoutMs = QUOTE_REQUEST_TIMEOUT_MS, context) {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      let timer;
+      let onAbort;
+      const cancelled = new Promise((_, reject) => {
+        onAbort = () => {
+          controller.abort();
+          reject(new Error('同步已達時間上限'));
+        };
+        if (context?.signal.aborted) return onAbort();
+        context?.signal.addEventListener('abort', onAbort, { once: true });
+        timer = setTimeout(() => {
+          controller.abort();
+          reject(new Error('請求逾時'));
+        }, Math.min(timeoutMs, QUOTE_REQUEST_TIMEOUT_MS));
+      });
       try {
-        const res = await fetch(url, { signal: controller.signal });
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        if (typeof res.text === 'function') {
-          const text = await res.text();
-          try {
-            return JSON.parse(text);
-          } catch (e) {
-            return { contents: text };
+        return await Promise.race([cancelled, (async () => {
+          if (controller.signal.aborted) throw new Error('同步已停止');
+          const res = await fetch(url, { signal: controller.signal });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          if (typeof res.text === 'function') {
+            const text = await res.text();
+            try { return JSON.parse(text); } catch { return { contents: text }; }
           }
-        }
-        return await res.json();
+          return await res.json();
+        })()]);
+      } catch (err) {
+        context?.errors.add(new URL(url).hostname + '：' + err.message);
+        throw err;
       } finally {
         clearTimeout(timer);
+        context?.signal.removeEventListener('abort', onAbort);
       }
     }
 
@@ -2159,7 +2171,7 @@
     }
 
     // Step 1: 鉅亨網 (Anue Cnyes) Direct-CORS Realtime Batch API (1 request for all stocks, works directly in browser without CORS proxy!)
-    async function fetchCnyesBatchQuotes(positions) {
+    async function fetchCnyesBatchQuotes(positions, context) {
       const map = new Map();
       if (!positions || positions.length === 0) return map;
       const codes = positions.map(p => `TWS:${p.symbol}:STOCK`).join(',');
@@ -2167,9 +2179,10 @@
       // Try direct browser fetch first (ws.api.cnyes.com sends Access-Control-Allow-Origin: *), then proxy fallbacks
       const endpoints = [cnyesUrl, ...buildProxyUrls(cnyesUrl)];
 
-      for (const ep of endpoints) {
+      for (const ep of endpoints.slice(0, 2)) {
+        if (context?.signal.aborted) break;
         try {
-          const raw = await fetchWithTimeout(ep, 5000);
+          const raw = await fetchWithTimeout(ep, 5000, context);
           const data = parseProxyJson(raw);
           const items = Array.isArray(data?.data?.items)
             ? data.data.items
@@ -2215,13 +2228,13 @@
             });
           }
           if (map.size > 0) break;
-        } catch (err) {}
+        } catch (err) { /* fetchWithTimeout records source failures in the sync context. */ }
       }
       return map;
     }
 
     // Step 2: Yahoo 奇摩股市台灣站單一請求批次 API (tw.stock.yahoo.com ApacLibraCharts — 1 request for all stocks, ~3KB JSON)
-    async function fetchTwYahooBatchQuotes(positions) {
+    async function fetchTwYahooBatchQuotes(positions, context) {
       const map = new Map();
       if (!positions || positions.length === 0) return map;
       // Use lowercase .tw / .two in the batch query so single-stock test mocks matching uppercase '3017.TW' are not triggered by the batch call
@@ -2230,9 +2243,10 @@
         + encodeURIComponent(JSON.stringify(tickers))
         + ';type=tick?returnMeta=true&_=' + Date.now();
 
-      for (const ep of buildProxyUrls(batchUrl)) {
+      for (const ep of buildProxyUrls(batchUrl).slice(0, 2)) {
+        if (context?.signal.aborted) break;
         try {
-          const raw = await fetchWithTimeout(ep, 5500);
+          const raw = await fetchWithTimeout(ep, 5500, context);
           const data = parseProxyJson(raw);
           if (!data || !Array.isArray(data.data)) continue;
 
@@ -2271,7 +2285,7 @@
             });
           }
           if (map.size > 0) break;
-        } catch (err) {}
+        } catch (err) { /* fetchWithTimeout records source failures in the sync context. */ }
       }
       return map;
     }
@@ -2373,14 +2387,15 @@
     }
 
     // Step 3: 證交所 / 櫃買中心官方 MIS 單一連線批次 API
-    async function fetchTwseMisBatchQuotes(positions) {
+    async function fetchTwseMisBatchQuotes(positions, context) {
       const map = new Map();
       if (!positions || positions.length === 0) return map;
       const exCh = positions.map(p => (p.market === 'TPEX' ? 'otc_' : 'tse_') + p.symbol + '.tw').join('|');
       const misUrl = 'https://mis.twse.com.tw/stock/api/getStockInfo.jsp?json=1&delay=0&ex_ch=' + encodeURIComponent(exCh) + '&_=' + Date.now();
-      for (const ep of buildProxyUrls(misUrl)) {
+      for (const ep of buildProxyUrls(misUrl).slice(0, 2)) {
+        if (context?.signal.aborted) break;
         try {
-          const raw = await fetchWithTimeout(ep, 6000);
+          const raw = await fetchWithTimeout(ep, 6000, context);
           const data = parseProxyJson(raw);
           if (!data || !Array.isArray(data.msgArray)) continue;
           for (const item of data.msgArray) {
@@ -2415,16 +2430,15 @@
             });
           }
           if (map.size > 0) break;
-        } catch (err) {}
+        } catch (err) { /* fetchWithTimeout records source failures in the sync context. */ }
       }
       return map;
     }
 
     // Step 4: Per-Stock Yahoo Finance Intraday / Yahoo 奇摩股市個股頁備援
-    async function fetchYahooIntradayQuote(symbol, market) {
+    async function fetchYahooIntradayQuote(symbol, market, context) {
       const primarySuffix = market === 'TPEX' ? '.TWO' : '.TW';
-      const altSuffix = market === 'TPEX' ? '.TW' : '.TWO';
-      const tickers = [symbol + primarySuffix, symbol + altSuffix];
+      const tickers = [symbol + primarySuffix];
       const ts = Date.now();
 
       for (const ticker of tickers) {
@@ -2437,12 +2451,13 @@
           'https://api.allorigins.win/raw?url=' + encodeURIComponent(twYahooShortUrl),
           'https://thingproxy.freeboard.io/fetch/' + yUrlIntraday
         ];
-        for (const ep of proxyEndpoints) {
+        for (const ep of proxyEndpoints.slice(0, 3)) {
+          if (context?.signal.aborted) break;
           try {
-            const raw = await fetchWithTimeout(ep, 5000);
+            const raw = await fetchWithTimeout(ep, 5000, context);
             const parsed = extractYahooQuote(raw);
             if (parsed) return parsed;
-          } catch (err) {}
+          } catch (err) { /* Continue only within the shared deadline and retry budget. */ }
         }
       }
       return null;
@@ -2459,9 +2474,12 @@
       const statusText = document.getElementById('statusText');
       btn.disabled = true;
       icon.classList.add('animate-spin');
-      statusText.textContent = '正在透過單一連線批次通道取得台股即時報價...';
+      statusText.textContent = '正在同步報價（最長 12 秒）...';
       const activeList = portfolioData.positions.filter(p => p.status === 'active' && p.trackLive);
       let updatedCount = 0;
+      const controller = new AbortController();
+      const context = { signal: controller.signal, errors: new Set() };
+      const deadline = setTimeout(() => controller.abort(), QUOTE_SYNC_TIMEOUT_MS);
       try {
         // Deduplicate network requests by market:symbol while snapshotting each individual lot
         const symbolGroups = new Map();
@@ -2478,7 +2496,10 @@
           });
         }
 
+        const resolved = new Set();
         const applyQuoteToGroup = (grp, quote) => {
+          if (context.signal.aborted || resolved.has(grp)) return;
+          resolved.add(grp);
           for (const item of grp.snapshots) {
             const { pos, requestedSymbol, requestedMarket, requestedPrice } = item;
             if (!portfolioData.positions.includes(pos) || pos.status !== 'active' || !pos.trackLive || pos.symbol !== requestedSymbol || pos.market !== requestedMarket || pos.currentPrice !== requestedPrice) continue;
@@ -2489,66 +2510,37 @@
             pos.quoteSource = quote.quoteSource;
             updatedCount++;
           }
+          if (updatedCount > 0) {
+            portfolioData.lastUpdated = taipeiNow();
+            savePortfolioState();
+            renderAll();
+            statusText.textContent = '同步中：已更新 ' + updatedCount + '/' + activeList.length + ' 筆';
+          }
         };
 
-        let remainingGroups = [...symbolGroups.values()];
-
-        // Phase 1 (Batch First #1): 鉅亨網公開即時報價 API (ws.api.cnyes.com — 支援瀏覽器直接 CORS 免代理連線，1 次請求抓齊全部標的)
-        if (remainingGroups.length > 0) {
-          const cnyesMap = await fetchCnyesBatchQuotes(remainingGroups.map(g => ({ symbol: g.symbol, market: g.market })));
-          const nextRemaining = [];
-          for (const grp of remainingGroups) {
-            const quote = cnyesMap.get(grp.symbol);
-            if (quote) {
-              applyQuoteToGroup(grp, quote);
-            } else {
-              nextRemaining.push(grp);
-            }
+        const groups = [...symbolGroups.values()];
+        const positions = groups.map(g => ({ symbol: g.symbol, market: g.market }));
+        // Independent batch sources start together; keep the first valid result per group.
+        await Promise.all([
+          fetchCnyesBatchQuotes, fetchTwYahooBatchQuotes, fetchTwseMisBatchQuotes
+        ].map(async fetchBatch => {
+          const quotes = await fetchBatch(positions, context);
+          for (const grp of groups) {
+            const quote = quotes.get(grp.symbol);
+            if (quote) applyQuoteToGroup(grp, quote);
           }
-          remainingGroups = nextRemaining;
-        }
+        }));
 
-        // Phase 2 (Batch First #2): Yahoo 奇摩股市台灣站單一請求批次 API (tw.stock.yahoo.com ApacLibraCharts — 1 次請求抓齊全部標的)
-        if (remainingGroups.length > 0) {
-          const twYahooMap = await fetchTwYahooBatchQuotes(remainingGroups.map(g => ({ symbol: g.symbol, market: g.market })));
-          const nextRemaining = [];
-          for (const grp of remainingGroups) {
-            const quote = twYahooMap.get(grp.symbol);
-            if (quote) {
-              applyQuoteToGroup(grp, quote);
-            } else {
-              nextRemaining.push(grp);
-            }
+        const remainingGroups = groups.filter(g => !resolved.has(g));
+        let next = 0;
+        // Three workers share the overall deadline; no new work starts after cancellation.
+        await Promise.all(Array.from({ length: Math.min(3, remainingGroups.length) }, async () => {
+          while (!context.signal.aborted && next < remainingGroups.length) {
+            const grp = remainingGroups[next++];
+            const quote = await fetchYahooIntradayQuote(grp.symbol, grp.market, context);
+            if (quote) applyQuoteToGroup(grp, quote);
           }
-          remainingGroups = nextRemaining;
-        }
-
-        // Phase 3 (Batch First #3): 證交所 / 櫃買中心官方 MIS 批次 API (在逐檔請求前執行，避免代理伺服器被逐檔迴圈觸發 429 限流)
-        if (remainingGroups.length > 0) {
-          const twseMap = await fetchTwseMisBatchQuotes(remainingGroups.map(g => ({ symbol: g.symbol, market: g.market })));
-          const nextRemaining = [];
-          for (const grp of remainingGroups) {
-            const quote = twseMap.get(grp.symbol);
-            if (quote) {
-              applyQuoteToGroup(grp, quote);
-            } else {
-              nextRemaining.push(grp);
-            }
-          }
-          remainingGroups = nextRemaining;
-        }
-
-        // Phase 4 (Per-Stock Fallback): 僅針對批次通道未涵蓋之剩餘個股進行逐檔查詢
-        if (remainingGroups.length > 0) {
-          const chunkSize = 3;
-          for (let i = 0; i < remainingGroups.length; i += chunkSize) {
-            const chunk = remainingGroups.slice(i, i + chunkSize);
-            await Promise.all(chunk.map(async grp => {
-              const quote = await fetchYahooIntradayQuote(grp.symbol, grp.market);
-              if (quote) applyQuoteToGroup(grp, quote);
-            }));
-          }
-        }
+        }));
 
         if (updatedCount > 0) {
           portfolioData.lastUpdated = taipeiNow();
@@ -2557,9 +2549,16 @@
         statusText.textContent = activeList.length === 0 ? '沒有需要同步的持倉' : updatedCount > 0
           ? '已同步 ' + updatedCount + '/' + activeList.length + ' 筆即時報價；其餘保留原價'
           : '同步失敗：保留原價格與時間，未取得新報價';
+        if (activeList.length > updatedCount) {
+          statusText.textContent += '；未更新 ' + (activeList.length - updatedCount) + ' 筆';
+          if (context.signal.aborted) statusText.textContent += '；已達 12 秒上限';
+          if (context.errors.size) statusText.textContent += '；' + [...context.errors].slice(0, 3).join('、');
+        }
         showToast(statusText.textContent);
         renderAll();
       } finally {
+        clearTimeout(deadline);
+        controller.abort();
         btn.disabled = false;
         icon.classList.remove('animate-spin');
       }
