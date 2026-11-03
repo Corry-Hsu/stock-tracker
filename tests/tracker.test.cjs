@@ -7,7 +7,7 @@ const html = fs.readFileSync(path.join(__dirname, '../index.html'), 'utf8');
 const source = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)].at(-1)[1];
 const seed = JSON.parse(fs.readFileSync(path.join(__dirname, '../portfolio.json'), 'utf8'));
 function app(fetch = async () => { throw Error('offline'); }, timers = {}) {
-  const nodes = new Map(), storage = new Map();
+  const nodes = new Map(), storage = new Map(), events = new Map();
   const element = id => {
     if (!nodes.has(id)) nodes.set(id, { value: '', textContent: '', innerHTML: '', disabled: false,
       classList: { add(){}, remove(){}, contains(){ return true; }, toggle(){} }, setAttribute(){}, addEventListener(){} });
@@ -16,17 +16,147 @@ function app(fetch = async () => { throw Error('offline'); }, timers = {}) {
   const ctx = vm.createContext({ console, Intl, Date, JSON, Number, String, Math, Set, AbortController, URL,
     fetch, setTimeout: timers.setTimeout || setTimeout, clearTimeout,
     localStorage: { getItem: k => storage.get(k), setItem: (k,v) => storage.set(k,v) },
-    window: { addEventListener(){}, innerWidth: 1200 },
+    window: { addEventListener(name, callback){ events.set(name, callback); }, innerWidth: 1200 },
     document: { getElementById: element, querySelectorAll: () => [], documentElement: element('html') } });
   vm.runInContext(source, ctx);
   const run = expression => vm.runInContext(expression,ctx);
   run('showToast = msg => { window.lastToast = msg; };');
-  return { ctx, run, element, storage };
+  return { ctx, run, element, storage, events };
 }
+
+function cloudReport(overrides = {}) {
+  return { schemaVersion: 1, attemptedAt: new Date().toISOString(), status: 'ok', updated: 1, requested: 12,
+    sources: [{ source: 'TWSE MIS', status: 'ok' }], quotes: { 'TWSE:2330': {
+      price: 2345, prevClose: 2370, quoteTime: new Date().toISOString(), quoteSource: 'TWSE MIS', priceType: 'trade'
+    } }, ...overrides };
+}
+
+test('page startup overlays cloud quotes onto cached local holdings', async () => {
+  const calls = [];
+  const a = app(async url => {
+    calls.push(url);
+    return { ok: true, json: async () => url === './portfolio.json' ? seed : cloudReport() };
+  });
+  a.ctx.location = { protocol: 'https:', hostname: 'localhost', pathname: '/' };
+  a.run('portfolioData.positions[3].shares = 999; portfolioData.positions[3].note = "cached local note"; savePortfolioState();');
+  await a.events.get('DOMContentLoaded')();
+  assert.deepEqual(calls.map(url => url.split('?')[0]), ['./portfolio.json', './quotes.json']);
+  assert.equal(a.run('portfolioData.positions[3].shares'), 999);
+  assert.equal(a.run('portfolioData.positions[3].note'), 'cached local note');
+  assert.equal(a.run('portfolioData.positions[3].currentPrice'), 2345);
+});
+
+test('explicit new trades reach existing browser portfolios once without losing local edits or repeating deleted trades', () => {
+  const a = app();
+  const original = structuredClone(seed);
+  original.positions = original.positions.filter(p => !seed.settings.positionAdditions.includes(p.id));
+  original.positions[0].shares = 777;
+  original.positions[0].note = 'preserve local note';
+  original.positions.splice(1, 1); // A user's earlier deletion must stay deleted.
+  a.ctx.cached = original;
+  a.storage.clear();
+  a.run('localStorage.setItem(STORAGE_KEY, JSON.stringify(cached)); portfolioData = loadPortfolioState();');
+  const first = JSON.parse(a.run('JSON.stringify(portfolioData)'));
+  for (const p of original.positions) assert.deepEqual(first.positions.find(item => item.id === p.id), p);
+  assert.equal(first.positions.some(p => p.id === seed.positions[1].id), false);
+  for (const id of seed.settings.positionAdditions) assert.equal(first.positions.filter(p => p.id === id).length, 1);
+  a.run('portfolioData = loadPortfolioState();');
+  assert.equal(a.run('portfolioData.positions.length'), first.positions.length);
+  a.run('portfolioData.positions = portfolioData.positions.filter(p => p.id !== "tw-5269-20261103"); savePortfolioState(); portfolioData = loadPortfolioState();');
+  assert.equal(a.run('portfolioData.positions.some(p => p.id === "tw-5269-20261103")'), false);
+});
+
+test('deployed page reads one cloud snapshot with no proxies and preserves all holdings fields', async () => {
+  const calls = [];
+  const a = app(async (url, options) => { calls.push({ url, options }); return { ok: true, json: async () => cloudReport() }; });
+  a.ctx.location = { protocol: 'https:', hostname: 'corry-hsu.github.io', pathname: '/stock-tracker/' };
+  a.run('portfolioData.positions[3].shares = 777; portfolioData.positions[3].note = "local edit"; savePortfolioState(); portfolioData = loadPortfolioState();');
+  const before = JSON.parse(a.run('JSON.stringify(portfolioData)'));
+  await a.run('syncNetworkQuotes()');
+  const after = JSON.parse(a.run('JSON.stringify(portfolioData)'));
+  assert.equal(calls.length, 1);
+  assert.match(calls[0].url, /^https:\/\/raw.githubusercontent.com\/Corry-Hsu\/stock-tracker\/main\/quotes.json\?/);
+  assert.equal(calls[0].options.cache, 'no-store');
+  for (let i = 0; i < before.positions.length; i++) {
+    const old = before.positions[i], p = after.positions[i];
+    for (const [key, value] of Object.entries(old)) {
+      if (!['currentPrice', 'prevClose', 'quoteTime', 'quoteSource', 'quoteDelivery'].includes(key)) assert.deepEqual(p[key], value);
+    }
+    if (old.symbol === '2330' && old.status === 'active') assert.equal(p.currentPrice, 2345);
+    else assert.deepEqual(p, old);
+  }
+  assert.match(a.run('quoteLabel(portfolioData.positions[3])'), /行情.*可能延遲/);
+  assert.equal(a.element('btnLiveFetch').disabled, false);
+});
+
+test('cloud merge never restores deleted lots, changes manual prices, locked trades or edits made in flight', async () => {
+  let resolveFetch;
+  const a = app(() => new Promise(resolve => { resolveFetch = resolve; }));
+  a.ctx.location = { protocol: 'https:', hostname: 'localhost', pathname: '/' };
+  a.run('portfolioData.positions[3].quoteSource = "manual"; portfolioData.positions[3].currentPrice = 3456;');
+  const pending = a.run('syncNetworkQuotes()');
+  a.run('portfolioData.positions[5].currentPrice = 3457; portfolioData.positions.splice(10, 1);');
+  resolveFetch({ ok: true, json: async () => cloudReport() });
+  await pending;
+  assert.equal(a.run('portfolioData.positions.length'), seed.positions.length - 1);
+  assert.equal(a.run('portfolioData.positions[3].currentPrice'), 3456);
+  assert.equal(a.run('portfolioData.positions[5].currentPrice'), 3457);
+  assert.match(a.run('quoteLabel(portfolioData.positions[3])'), /手動/);
+  assert.equal(a.run('portfolioData.positions.find(p => p.id === "tw-2330-20260929-exit").exitPrice'), 2480);
+});
+
+test('cloud failures preserve data, expose source errors, fall back from raw host and restore the button', async () => {
+  let calls = 0;
+  const a = app(async () => {
+    calls++;
+    if (calls === 1) return { ok: false, status: 503 };
+    return { ok: true, json: async () => cloudReport({ status: 'failed', updated: 0, quotes: {}, sources: [{ source: 'Cnyes', status: 'error', error: 'Redis 5031' }] }) };
+  });
+  a.ctx.location = { protocol: 'https:', hostname: 'corry-hsu.github.io', pathname: '/stock-tracker/' };
+  const before = a.run('JSON.stringify(portfolioData)');
+  await a.run('syncNetworkQuotes()');
+  assert.equal(calls, 2);
+  assert.equal(a.run('JSON.stringify(portfolioData)'), before);
+  assert.match(a.element('statusText').textContent, /失敗.*Redis 5031/);
+  assert.equal(a.element('btnLiveFetch').disabled, false);
+});
+
+test('cloud hung bodies terminate and duplicate refreshes do not create more requests', async () => {
+  let calls = 0;
+  const a = app(async () => { calls++; return { ok: true, json: () => new Promise(() => {}) }; }, { setTimeout: fn => setTimeout(fn, 15) });
+  a.ctx.location = { protocol: 'https:', hostname: 'localhost', pathname: '/' };
+  const before = a.run('JSON.stringify(portfolioData)');
+  const pending = a.run('syncNetworkQuotes()');
+  await a.run('syncNetworkQuotes()');
+  await pending;
+  assert.equal(calls, 1);
+  assert.equal(a.run('JSON.stringify(portfolioData)'), before);
+  assert.match(a.element('statusText').textContent, /逾時/);
+  assert.equal(a.element('btnLiveFetch').disabled, false);
+});
+
+test('cloud rejects invalid schemas and invalid, stale, future or regressing prices', async () => {
+  for (const mutate of [
+    r => { r.schemaVersion = 99; },
+    r => { r.quotes['TWSE:2330'].price = -1; },
+    r => { r.quotes['TWSE:2330'].quoteTime = null; },
+    r => { r.quotes['TWSE:2330'].quoteTime = '2000-01-01T00:00:00Z'; },
+    r => { r.quotes['TWSE:2330'].quoteTime = '2099-01-01T00:00:00Z'; },
+    r => { r.quotes['TWSE:2330'].quoteTime = new Date(Date.now() - 60000).toISOString(); }
+  ]) {
+    const report = cloudReport(); mutate(report);
+    const a = app(async () => ({ ok: true, json: async () => report }));
+    a.ctx.location = { protocol: 'https:', hostname: 'localhost', pathname: '/' };
+    a.run('portfolioData.positions.filter(p => p.symbol === "2330").forEach(p => { p.quoteTime = new Date().toISOString(); });');
+    const before = a.run('JSON.stringify(portfolioData)');
+    await a.run('syncNetworkQuotes()');
+    assert.equal(a.run('JSON.stringify(portfolioData)'), before);
+  }
+});
 test('embedded fallback and deployed JSON agree and validate', () => {
   const a=app();
   assert.deepEqual(JSON.parse(a.run('JSON.stringify(DEFAULT_PORTFOLIO_JSON)')), seed);
-  assert.equal(a.run('validatePortfolio(portfolioData).positions.length'),22);
+  assert.equal(a.run('validatePortfolio(portfolioData).positions.length'),seed.positions.length);
 });
 test('reject malformed holdings before applying data', () => {
   const a=app();
@@ -52,9 +182,9 @@ test('partial success uses daily previous close, records quote time and leaves e
   await a.run('syncNetworkQuotes()');
   assert.equal(a.run('portfolioData.positions[0].currentPrice'),3200);
   assert.equal(a.run('portfolioData.positions[0].prevClose'),3100);
-  assert.equal(a.run('portfolioData.positions[1].currentPrice'),1025);
+  assert.equal(a.run('portfolioData.positions[1].currentPrice'),seed.positions[1].currentPrice);
   assert.equal(a.run('JSON.stringify(portfolioData.positions.filter(p=>p.status==="exited"))'),exited);
-  assert.match(a.element('statusText').textContent,/1\/20/);
+  assert.match(a.element('statusText').textContent, new RegExp('1/' + seed.positions.filter(p => p.status === 'active' && p.trackLive).length));
   assert.match(a.run('quoteLabel(portfolioData.positions[0])'),/Yahoo/);
 });
 test('invalid payload never overwrites a stored price', async()=>{
@@ -67,7 +197,7 @@ test('exiting a position while its quote is in flight preserves it', async()=>{
     return {ok:true,json:async()=>({contents:JSON.stringify({chart:{result:[{meta:{regularMarketPrice:3400,regularMarketTime:1793151000}}]}})})};
   });
   await a.run('syncNetworkQuotes()');
-  assert.equal(a.run('portfolioData.positions[0].currentPrice'),3005);
+  assert.equal(a.run('portfolioData.positions[0].currentPrice'),seed.positions[0].currentPrice);
   assert.equal(a.run('portfolioData.positions[0].exitPrice'),3333);
 });
 test('KPI matches sum of the active positions and excludes unknown exited costs',()=>{
@@ -166,13 +296,14 @@ test('falls back to TWSE MIS batch endpoint when per-stock Yahoo endpoints fail'
 test('groups multiple lots of the same symbol with weighted average cost, latest date, and max target price', () => {
   const a = app();
   const groups = a.run('groupPositionsBySymbol(portfolioData.positions.filter(p => p.status === "active"), "active")');
-  assert.equal(groups.length, 12);
+  assert.equal(groups.length, new Set(seed.positions.filter(p => p.status === 'active').map(p => p.market + ':' + p.symbol)).size);
   const tsmc = groups.find(g => g.symbol === '2330');
-  assert.equal(tsmc.items.length, 5);
-  assert.equal(tsmc.totalShares, 60);
-  assert.equal(tsmc.totalCost, 10 * 2500 + 20 * 2435 + 20 * 2432.5 + 5 * 2410 + 5 * 2370);
-  assert.equal(Number(tsmc.avgBuyPrice.toFixed(2)), 2437.50);
-  assert.equal(tsmc.latestDate, '2026-10-30');
+  const tsmcLots = seed.positions.filter(p => p.status === 'active' && p.symbol === '2330');
+  assert.equal(tsmc.items.length, tsmcLots.length);
+  assert.equal(tsmc.totalShares, tsmcLots.reduce((sum, p) => sum + p.shares, 0));
+  assert.equal(tsmc.totalCost, tsmcLots.reduce((sum, p) => sum + p.shares * p.buyPrice, 0));
+  assert.equal(Number(tsmc.avgBuyPrice.toFixed(2)), Number((tsmc.totalCost / tsmc.totalShares).toFixed(2)));
+  assert.equal(tsmc.latestDate, tsmcLots.map(p => p.tradeDate).sort().at(-1));
 
   const nanya = groups.find(g => g.symbol === '2408');
   assert.equal(nanya.items.length, 2);
@@ -204,7 +335,7 @@ test('only renders second-level detail toggle for symbols with 2 or more lots', 
 
   // Multi-lot symbols (2330 has 5 lots, 2408 has 2 lots, 6147 has 2 lots, 1303 has 2 lots, 00981A has 2 lots) MUST have toggle-group buttons
   assert.ok(desktopHtml.includes('data-group-key="active:TWSE:2330"'));
-  assert.ok(desktopHtml.includes('▼ 明細 (5)'));
+  assert.ok(desktopHtml.includes('▼ 明細 (' + seed.positions.filter(p => p.symbol === '2330' && p.status === 'active').length + ')'));
   assert.ok(desktopHtml.includes('data-group-key="active:TWSE:2408"'));
   assert.ok(desktopHtml.includes('▼ 明細 (2)'));
   assert.ok(desktopHtml.includes('data-group-key="active:TPEX:6147"'));

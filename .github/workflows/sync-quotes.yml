@@ -2,28 +2,64 @@ name: Sync Taiwan Stock Quotes
 
 on:
   workflow_dispatch:
+  # PR runs test the real network without publishing any generated data.
+  pull_request:
+    paths:
+      - 'scripts/**'
+      - 'tests/**'
+      - 'index.html'
+      - '.github/workflows/sync-quotes.yml'
   schedule:
-    # Runs every 15 minutes during Taiwan market hours (Mon-Fri 01:00-05:45 UTC = 09:00-13:45 Taipei)
-    - cron: '*/15 1-5 * * 1-5'
+    # Taipei 09:07–13:52 weekdays; scheduling can be delayed by GitHub.
+    - cron: '7,22,37,52 1-5 * * 1-5'
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: quote-sync-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   sync:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-      - name: Fetch Live Quotes (Server-Side without Browser CORS)
+          node-version: '22'
+      - name: Test before fetching
+        run: node --test tests/*.test.*
+      - name: Fetch quotes with source diagnostics
+        id: fetch
+        continue-on-error: true
         run: node scripts/sync-quotes.mjs
-      - name: Run Unit Tests
-        run: node --test tests/tracker.test.cjs
-      - name: Commit & Push Updated Quotes
+      - name: Verify generated data and holdings invariants
+        if: steps.fetch.outcome != 'skipped'
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add portfolio.json index.html
-          git diff --staged --quiet || git commit -m "chore: sync live stock quotes" && git push
+          node --test tests/*.test.*
+          git diff --exit-code -- portfolio.json index.html
+      - name: Upload diagnostics (including failures)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quote-sync-${{ github.run_id }}
+          path: quotes.json
+          if-no-files-found: warn
+      - name: Publish quotes only on the default branch
+        if: github.event_name != 'pull_request' && github.ref_name == github.event.repository.default_branch
+        run: |
+          test -f quotes.json
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- quotes.json
+          if ! git diff --staged --quiet; then
+            git commit -m 'chore: update quote snapshot and source status'
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
+      - name: Fail visibly on incomplete or zero quote coverage
+        if: steps.fetch.outcome == 'failure'
+        run: exit 1
