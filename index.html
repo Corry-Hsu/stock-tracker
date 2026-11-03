@@ -587,10 +587,14 @@
   "schemaVersion": "1.0",
   "portfolioName": "台股投資組合追蹤清單",
   "currency": "TWD",
-  "lastUpdated": "2026-11-02 09:53:51",
+  "lastUpdated": "2026-11-03 11:14:33",
   "settings": {
     "colorScheme": "TW_RED_UP_GREEN_DOWN",
-    "note": "status 設為 'active' 且 trackLive: true 代表持續追蹤即時報價；status 設為 'exited' 且 trackLive: false 代表已出場固定不再追蹤。"
+    "note": "status 設為 'active' 且 trackLive: true 代表持續追蹤即時報價；status 設為 'exited' 且 trackLive: false 代表已出場固定不再追蹤。",
+    "positionAdditions": [
+      "tw-2330-20261102",
+      "tw-5269-20261103"
+    ]
   },
   "positions": [
     {
@@ -925,7 +929,7 @@
       "actionLabel": "買進100股",
       "shares": 100,
       "sharesAssumed": false,
-      "buyPrice": 318.0,
+      "buyPrice": 318,
       "currentPrice": 297.5,
       "prevClose": 296,
       "exitPrice": null,
@@ -992,6 +996,46 @@
       "exitDate": null,
       "targetPrice": null,
       "note": "10/30 也買進1張00981A$26.53。"
+    },
+    {
+      "id": "tw-2330-20261102",
+      "symbol": "2330",
+      "market": "TWSE",
+      "name": "台積電",
+      "status": "active",
+      "trackLive": true,
+      "tradeDate": "2026-11-02",
+      "tradeTime": null,
+      "actionLabel": "加碼買進5股",
+      "shares": 5,
+      "sharesAssumed": false,
+      "buyPrice": 2340,
+      "currentPrice": 2330,
+      "prevClose": 2370,
+      "exitPrice": null,
+      "exitDate": null,
+      "targetPrice": null,
+      "note": "11/2 加碼台積電5股$2340。"
+    },
+    {
+      "id": "tw-5269-20261103",
+      "symbol": "5269",
+      "market": "TWSE",
+      "name": "祥碩",
+      "status": "active",
+      "trackLive": true,
+      "tradeDate": "2026-11-03",
+      "tradeTime": null,
+      "actionLabel": "加碼買進5股",
+      "shares": 5,
+      "sharesAssumed": false,
+      "buyPrice": 1390,
+      "currentPrice": 1390,
+      "prevClose": null,
+      "exitPrice": null,
+      "exitDate": null,
+      "targetPrice": null,
+      "note": "11/3 加碼買進5股祥碩$1390。"
     },
     {
       "id": "tw-6234-20261019-exit",
@@ -1125,14 +1169,35 @@
     }
 
     function loadPortfolioState() {
+      let data;
       try {
         const raw = localStorage.getItem(STORAGE_KEY);
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          return validatePortfolio(parsed);
-        }
+        if (raw) data = validatePortfolio(JSON.parse(raw));
       } catch (err) {}
-      return JSON.parse(JSON.stringify(DEFAULT_PORTFOLIO_JSON));
+      if (!data) data = JSON.parse(JSON.stringify(DEFAULT_PORTFOLIO_JSON));
+      // Explicitly published new trades are appended once. Older local edits and
+      // deletions stay intact, including deletion of these trades after migration.
+      try {
+        const markerKey = STORAGE_KEY + ':position-additions';
+        const rawApplied = JSON.parse(localStorage.getItem(markerKey) || '[]');
+        const applied = new Set(Array.isArray(rawApplied) ? rawApplied : []);
+        let changed = false;
+        for (const id of DEFAULT_PORTFOLIO_JSON.settings?.positionAdditions || []) {
+          if (applied.has(id)) continue;
+          const addition = DEFAULT_PORTFOLIO_JSON.positions.find(p => p.id === id);
+          if (!addition) continue;
+          if (!data.positions.some(p => p.id === id)) {
+            const exitedIndex = data.positions.findIndex(p => p.status === 'exited');
+            data.positions.splice(exitedIndex < 0 ? data.positions.length : exitedIndex, 0, JSON.parse(JSON.stringify(addition)));
+            changed = true;
+          }
+          applied.add(id);
+        }
+        // Persist data before the marker, so a failed save can safely retry.
+        if (changed) localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        localStorage.setItem(markerKey, JSON.stringify([...applied]));
+      } catch (err) {}
+      return data;
     }
 
     function savePortfolioState() {

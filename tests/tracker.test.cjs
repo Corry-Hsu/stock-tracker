@@ -46,6 +46,26 @@ test('page startup overlays cloud quotes onto cached local holdings', async () =
   assert.equal(a.run('portfolioData.positions[3].currentPrice'), 2345);
 });
 
+test('explicit new trades reach existing browser portfolios once without losing local edits or repeating deleted trades', () => {
+  const a = app();
+  const original = structuredClone(seed);
+  original.positions = original.positions.filter(p => !seed.settings.positionAdditions.includes(p.id));
+  original.positions[0].shares = 777;
+  original.positions[0].note = 'preserve local note';
+  original.positions.splice(1, 1); // A user's earlier deletion must stay deleted.
+  a.ctx.cached = original;
+  a.storage.clear();
+  a.run('localStorage.setItem(STORAGE_KEY, JSON.stringify(cached)); portfolioData = loadPortfolioState();');
+  const first = JSON.parse(a.run('JSON.stringify(portfolioData)'));
+  for (const p of original.positions) assert.deepEqual(first.positions.find(item => item.id === p.id), p);
+  assert.equal(first.positions.some(p => p.id === seed.positions[1].id), false);
+  for (const id of seed.settings.positionAdditions) assert.equal(first.positions.filter(p => p.id === id).length, 1);
+  a.run('portfolioData = loadPortfolioState();');
+  assert.equal(a.run('portfolioData.positions.length'), first.positions.length);
+  a.run('portfolioData.positions = portfolioData.positions.filter(p => p.id !== "tw-5269-20261103"); savePortfolioState(); portfolioData = loadPortfolioState();');
+  assert.equal(a.run('portfolioData.positions.some(p => p.id === "tw-5269-20261103")'), false);
+});
+
 test('deployed page reads one cloud snapshot with no proxies and preserves all holdings fields', async () => {
   const calls = [];
   const a = app(async (url, options) => { calls.push({ url, options }); return { ok: true, json: async () => cloudReport() }; });
@@ -136,7 +156,7 @@ test('cloud rejects invalid schemas and invalid, stale, future or regressing pri
 test('embedded fallback and deployed JSON agree and validate', () => {
   const a=app();
   assert.deepEqual(JSON.parse(a.run('JSON.stringify(DEFAULT_PORTFOLIO_JSON)')), seed);
-  assert.equal(a.run('validatePortfolio(portfolioData).positions.length'),22);
+  assert.equal(a.run('validatePortfolio(portfolioData).positions.length'),seed.positions.length);
 });
 test('reject malformed holdings before applying data', () => {
   const a=app();
@@ -164,7 +184,7 @@ test('partial success uses daily previous close, records quote time and leaves e
   assert.equal(a.run('portfolioData.positions[0].prevClose'),3100);
   assert.equal(a.run('portfolioData.positions[1].currentPrice'),seed.positions[1].currentPrice);
   assert.equal(a.run('JSON.stringify(portfolioData.positions.filter(p=>p.status==="exited"))'),exited);
-  assert.match(a.element('statusText').textContent,/1\/20/);
+  assert.match(a.element('statusText').textContent, new RegExp('1/' + seed.positions.filter(p => p.status === 'active' && p.trackLive).length));
   assert.match(a.run('quoteLabel(portfolioData.positions[0])'),/Yahoo/);
 });
 test('invalid payload never overwrites a stored price', async()=>{
@@ -276,13 +296,14 @@ test('falls back to TWSE MIS batch endpoint when per-stock Yahoo endpoints fail'
 test('groups multiple lots of the same symbol with weighted average cost, latest date, and max target price', () => {
   const a = app();
   const groups = a.run('groupPositionsBySymbol(portfolioData.positions.filter(p => p.status === "active"), "active")');
-  assert.equal(groups.length, 12);
+  assert.equal(groups.length, new Set(seed.positions.filter(p => p.status === 'active').map(p => p.market + ':' + p.symbol)).size);
   const tsmc = groups.find(g => g.symbol === '2330');
-  assert.equal(tsmc.items.length, 5);
-  assert.equal(tsmc.totalShares, 60);
-  assert.equal(tsmc.totalCost, 10 * 2500 + 20 * 2435 + 20 * 2432.5 + 5 * 2410 + 5 * 2370);
-  assert.equal(Number(tsmc.avgBuyPrice.toFixed(2)), 2437.50);
-  assert.equal(tsmc.latestDate, '2026-10-30');
+  const tsmcLots = seed.positions.filter(p => p.status === 'active' && p.symbol === '2330');
+  assert.equal(tsmc.items.length, tsmcLots.length);
+  assert.equal(tsmc.totalShares, tsmcLots.reduce((sum, p) => sum + p.shares, 0));
+  assert.equal(tsmc.totalCost, tsmcLots.reduce((sum, p) => sum + p.shares * p.buyPrice, 0));
+  assert.equal(Number(tsmc.avgBuyPrice.toFixed(2)), Number((tsmc.totalCost / tsmc.totalShares).toFixed(2)));
+  assert.equal(tsmc.latestDate, tsmcLots.map(p => p.tradeDate).sort().at(-1));
 
   const nanya = groups.find(g => g.symbol === '2408');
   assert.equal(nanya.items.length, 2);
@@ -314,7 +335,7 @@ test('only renders second-level detail toggle for symbols with 2 or more lots', 
 
   // Multi-lot symbols (2330 has 5 lots, 2408 has 2 lots, 6147 has 2 lots, 1303 has 2 lots, 00981A has 2 lots) MUST have toggle-group buttons
   assert.ok(desktopHtml.includes('data-group-key="active:TWSE:2330"'));
-  assert.ok(desktopHtml.includes('▼ 明細 (5)'));
+  assert.ok(desktopHtml.includes('▼ 明細 (' + seed.positions.filter(p => p.symbol === '2330' && p.status === 'active').length + ')'));
   assert.ok(desktopHtml.includes('data-group-key="active:TWSE:2408"'));
   assert.ok(desktopHtml.includes('▼ 明細 (2)'));
   assert.ok(desktopHtml.includes('data-group-key="active:TPEX:6147"'));
