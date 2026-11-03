@@ -84,9 +84,9 @@
                 <span class="text-emerald-600 dark:text-emerald-400">綠跌 ▼</span>
               </span>
             </div>
-            <div class="flex items-center gap-1.5 mt-0.5 text-xs text-slate-600 dark:text-slate-400 font-medium truncate">
+            <div class="flex items-start gap-1.5 mt-0.5 text-xs text-slate-600 dark:text-slate-400 font-medium">
               <span id="statusDot" class="w-2 h-2 rounded-full bg-emerald-500 inline-block shrink-0"></span>
-              <span id="statusText" class="truncate">已載入儲存價格；尚未同步網路報價</span>
+              <span id="statusText" class="whitespace-normal break-words" role="status" aria-live="polite">已載入儲存價格；尚未同步網路報價</span>
             </div>
           </div>
         </div>
@@ -2073,6 +2073,10 @@
       const date = new Date(p.quoteTime);
       const hasValidDate = Number.isFinite(date.getTime());
       const timeStr = hasValidDate ? date.toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false }) : '';
+      if (p.quoteDelivery === 'cloud' && hasValidDate) {
+        const age = Date.now() - date.getTime();
+        return p.quoteSource + '｜行情 ' + timeStr + (age > 30 * 60000 ? '（較舊／休市行情）' : '（可能延遲）');
+      }
       if (p.quoteSource && p.quoteSource.startsWith('鉅亨網') && hasValidDate) {
         return '鉅亨網即時 ' + timeStr;
       }
@@ -2467,7 +2471,85 @@
       return await fetchYahooIntradayQuote(symbol, market);
     }
 
+    // Merge only quote fields into current local holdings, including user-added lots.
+    // A cached portfolio must never hide new cloud quotes or restore deleted trades.
+    function applyCloudQuotes(report, snapshots) {
+      if (report?.schemaVersion !== 1 || !report.quotes || Array.isArray(report.quotes) || typeof report.quotes !== 'object'
+          || !['ok', 'partial', 'failed', 'idle'].includes(report.status)
+          || !Number.isFinite(Date.parse(report.attemptedAt)) || !Array.isArray(report.sources)) throw new Error('雲端報價格式錯誤');
+      let updated = 0;
+      for (const item of snapshots) {
+        const { pos, symbol, market, price, source } = item;
+        if (!portfolioData.positions.includes(pos) || pos.status !== 'active' || !pos.trackLive || pos.quoteSource === 'manual'
+            || pos.symbol !== symbol || pos.market !== market || pos.currentPrice !== price || pos.quoteSource !== source) continue;
+        const q = report.quotes[market + ':' + symbol];
+        if (!q || !Number.isFinite(q.price) || q.price <= 0 || q.priceType !== 'trade' || typeof q.quoteSource !== 'string'
+            || typeof q.quoteTime !== 'string' || !Number.isFinite(Date.parse(q.quoteTime))) continue;
+        const quoteMs = Date.parse(q.quoteTime);
+        if (quoteMs > Date.now() + 300000 || Date.now() - quoteMs > 7 * 86400000) continue;
+        if (pos.quoteTime && Number.isFinite(Date.parse(pos.quoteTime)) && quoteMs < Date.parse(pos.quoteTime)) continue;
+        pos.currentPrice = q.price;
+        if (Number.isFinite(q.prevClose) && q.prevClose > 0) pos.prevClose = q.prevClose;
+        pos.quoteTime = q.quoteTime;
+        pos.quoteSource = q.quoteSource;
+        pos.quoteDelivery = 'cloud';
+        updated++;
+      }
+      if (updated) savePortfolioState();
+      return updated;
+    }
+
+    function cloudQuoteUrls() {
+      // Bot commits do not trigger a new Pages build. Read the public data branch
+      // directly on the production Pages host; other hosts use their own quotes.json.
+      const deployed = location.hostname === 'corry-hsu.github.io' && location.pathname.startsWith('/stock-tracker/');
+      return deployed ? ['https://raw.githubusercontent.com/Corry-Hsu/stock-tracker/main/quotes.json', './quotes.json'] : ['./quotes.json'];
+    }
+
+    async function syncCloudQuotes() {
+      const btn = document.getElementById('btnLiveFetch');
+      if (btn.disabled) return;
+      const status = document.getElementById('statusText');
+      const icon = document.getElementById('iconRefresh');
+      btn.disabled = true;
+      icon.classList.add('animate-spin');
+      status.textContent = '正在讀取雲端報價...';
+      const snapshots = portfolioData.positions.map(pos => ({ pos, symbol: pos.symbol, market: pos.market, price: pos.currentPrice, source: pos.quoteSource }));
+      try {
+        let report, updated, lastError;
+        for (const url of cloudQuoteUrls()) {
+          const controller = new AbortController();
+          let timer;
+          try {
+            const expired = new Promise((_, reject) => { timer = setTimeout(() => { controller.abort(); reject(new Error('讀取逾時')); }, 4000); });
+            report = await Promise.race([expired, (async () => {
+              const res = await fetch(url + '?_=' + Date.now(), { cache: 'no-store', signal: controller.signal });
+              if (!res.ok) throw new Error('HTTP ' + res.status);
+              return await res.json();
+            })()]);
+            updated = applyCloudQuotes(report, snapshots);
+            break;
+          } catch (err) { lastError = err; report = null; }
+          finally { clearTimeout(timer); controller.abort(); }
+        }
+        if (!report) throw lastError;
+        const attempted = new Date(report.attemptedAt).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false });
+        const labels = { ok: '成功', partial: '部分成功', failed: '失敗（保留舊價）', idle: '無追蹤標的' };
+        const details = report.sources.map(s => s.source + ': ' + s.status + (s.error ? ' / ' + s.error : '')).join('；');
+        status.textContent = `雲端同步${labels[report.status]} ${report.updated}/${report.requested} 檔｜嘗試時間 ${attempted}｜套用 ${updated} 筆；手動價與未涵蓋標的保留原價`;
+        if (Date.now() - Date.parse(report.attemptedAt) > 30 * 60000) status.textContent += '；排程資料較舊／可能休市';
+        if (details) status.textContent += '｜' + details;
+        renderAll();
+      } catch (err) {
+        status.textContent = '雲端報價讀取失敗：' + err.message + '；保留原價格與時間';
+      } finally {
+        btn.disabled = false;
+        icon.classList.remove('animate-spin');
+      }
+    }
+
     async function syncNetworkQuotes() {
+      if (typeof location !== 'undefined' && location.protocol !== 'file:') return syncCloudQuotes();
       const btn = document.getElementById('btnLiveFetch');
       if (btn.disabled) return;
       const icon = document.getElementById('iconRefresh');
@@ -3033,6 +3115,7 @@
       }
       initEvents();
       renderAll();
+      if (location.protocol !== 'file:') await syncCloudQuotes();
     });
   </script>
 </body>
