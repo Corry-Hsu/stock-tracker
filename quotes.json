@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "attemptedAt": "2026-11-03T11:17:52.204Z",
-  "lastSuccessAt": "2026-11-03T11:17:52.204Z",
+  "attemptedAt": "2026-11-04T01:45:22.752Z",
+  "lastSuccessAt": "2026-11-04T01:45:22.752Z",
   "status": "ok",
   "requested": 13,
   "updated": 13,
@@ -10,187 +10,101 @@
   "sources": [
     {
       "source": "TWSE MIS",
-      "status": "error",
-      "accepted": 0,
-      "error": "request timeout",
-      "durationMs": 6000
-    },
-    {
-      "source": "Cnyes",
-      "status": "error",
-      "accepted": 0,
-      "error": "Cnyes 200: OK",
-      "durationMs": 707
-    },
-    {
-      "source": "Yahoo 3017.TW",
       "status": "ok",
-      "accepted": 1,
-      "durationMs": 78
-    },
-    {
-      "source": "Yahoo 2368.TW",
-      "status": "ok",
-      "accepted": 1,
-      "durationMs": 85
-    },
-    {
-      "source": "Yahoo 3231.TW",
-      "status": "ok",
-      "accepted": 1,
-      "durationMs": 35
-    },
-    {
-      "source": "Yahoo 2330.TW",
-      "status": "ok",
-      "accepted": 1,
-      "durationMs": 39
-    },
-    {
-      "source": "Yahoo 2408.TW",
-      "status": "ok",
-      "accepted": 1,
-      "durationMs": 37
-    },
-    {
-      "source": "Yahoo 6505.TW",
-      "status": "ok",
-      "accepted": 1,
-      "durationMs": 38
-    },
-    {
-      "source": "Yahoo 6147.TWO",
-      "status": "ok",
-      "accepted": 1,
-      "durationMs": 36
-    },
-    {
-      "source": "Yahoo 2449.TW",
-      "status": "ok",
-      "accepted": 1,
-      "durationMs": 36
-    },
-    {
-      "source": "Yahoo 8021.TW",
-      "status": "ok",
-      "accepted": 1,
-      "durationMs": 34
-    },
-    {
-      "source": "Yahoo 00981A.TW",
-      "status": "ok",
-      "accepted": 1,
-      "durationMs": 38
-    },
-    {
-      "source": "Yahoo 1101.TW",
-      "status": "ok",
-      "accepted": 1,
-      "durationMs": 38
-    },
-    {
-      "source": "Yahoo 1303.TW",
-      "status": "ok",
-      "accepted": 1,
-      "durationMs": 40
-    },
-    {
-      "source": "Yahoo 5269.TW",
-      "status": "ok",
-      "accepted": 1,
-      "durationMs": 35
+      "accepted": 13,
+      "durationMs": 910
     }
   ],
   "quotes": {
     "TWSE:3017": {
-      "price": 2935,
-      "prevClose": 3060,
-      "quoteTime": "2026-11-03T05:30:14.000Z",
-      "quoteSource": "Yahoo Finance",
+      "price": 2895,
+      "prevClose": 2935,
+      "quoteTime": "2026-11-04T01:34:58.000Z",
+      "quoteSource": "TWSE MIS",
       "priceType": "trade"
     },
     "TWSE:2368": {
-      "price": 970,
-      "prevClose": 1060,
-      "quoteTime": "2026-11-03T05:30:13.000Z",
-      "quoteSource": "Yahoo Finance",
+      "price": 990,
+      "prevClose": 970,
+      "quoteTime": "2026-11-04T01:35:46.000Z",
+      "quoteSource": "TWSE MIS",
       "priceType": "trade"
     },
     "TWSE:3231": {
-      "price": 176.5,
-      "prevClose": 181.5,
-      "quoteTime": "2026-11-03T05:30:07.000Z",
-      "quoteSource": "Yahoo Finance",
+      "price": 176,
+      "prevClose": 176.5,
+      "quoteTime": "2026-11-04T01:42:22.000Z",
+      "quoteSource": "TWSE MIS",
       "priceType": "trade"
     },
     "TWSE:2330": {
-      "price": 2295,
-      "prevClose": 2330,
-      "quoteTime": "2026-11-03T05:30:05.000Z",
-      "quoteSource": "Yahoo Finance",
+      "price": 2285,
+      "prevClose": 2295,
+      "quoteTime": "2026-11-04T01:44:55.000Z",
+      "quoteSource": "TWSE MIS",
       "priceType": "trade"
     },
     "TWSE:2408": {
-      "price": 411,
-      "prevClose": 456.5,
-      "quoteTime": "2026-11-03T05:30:02.000Z",
-      "quoteSource": "Yahoo Finance",
+      "price": 400,
+      "prevClose": 411,
+      "quoteTime": "2026-11-04T01:44:11.000Z",
+      "quoteSource": "TWSE MIS",
       "priceType": "trade"
     },
     "TWSE:6505": {
-      "price": 94.9,
-      "prevClose": 103,
-      "quoteTime": "2026-11-03T05:30:09.000Z",
-      "quoteSource": "Yahoo Finance",
+      "price": 96.3,
+      "prevClose": 94.9,
+      "quoteTime": "2026-11-04T01:43:52.000Z",
+      "quoteSource": "TWSE MIS",
       "priceType": "trade"
     },
     "TPEX:6147": {
-      "price": 172.5,
-      "prevClose": 191.5,
-      "quoteTime": "2026-11-03T05:30:30.000Z",
-      "quoteSource": "Yahoo Finance",
+      "price": 170.5,
+      "prevClose": 172.5,
+      "quoteTime": "2026-11-04T01:44:07.000Z",
+      "quoteSource": "TWSE MIS",
       "priceType": "trade"
     },
     "TWSE:2449": {
-      "price": 253.5,
-      "prevClose": 263,
-      "quoteTime": "2026-11-03T05:30:09.000Z",
-      "quoteSource": "Yahoo Finance",
+      "price": 251,
+      "prevClose": 253.5,
+      "quoteTime": "2026-11-04T01:44:06.000Z",
+      "quoteSource": "TWSE MIS",
       "priceType": "trade"
     },
     "TWSE:8021": {
-      "price": 382.5,
-      "prevClose": 424.5,
-      "quoteTime": "2026-11-03T05:30:19.000Z",
-      "quoteSource": "Yahoo Finance",
+      "price": 389,
+      "prevClose": 382.5,
+      "quoteTime": "2026-11-04T01:42:03.000Z",
+      "quoteSource": "TWSE MIS",
       "priceType": "trade"
     },
     "TWSE:00981A": {
-      "price": 24.9,
-      "prevClose": 26.57,
-      "quoteTime": "2026-11-03T05:30:02.000Z",
-      "quoteSource": "Yahoo Finance",
+      "price": 24.97,
+      "prevClose": 24.9,
+      "quoteTime": "2026-11-04T01:43:54.000Z",
+      "quoteSource": "TWSE MIS",
       "priceType": "trade"
     },
     "TWSE:1101": {
-      "price": 27.7,
-      "prevClose": 28.1,
-      "quoteTime": "2026-11-03T05:30:13.000Z",
-      "quoteSource": "Yahoo Finance",
+      "price": 27.5,
+      "prevClose": 27.7,
+      "quoteTime": "2026-11-04T01:42:43.000Z",
+      "quoteSource": "TWSE MIS",
       "priceType": "trade"
     },
     "TWSE:1303": {
-      "price": 271,
-      "prevClose": 301,
-      "quoteTime": "2026-11-03T05:30:01.000Z",
-      "quoteSource": "Yahoo Finance",
+      "price": 271.5,
+      "prevClose": 271,
+      "quoteTime": "2026-11-04T01:43:30.000Z",
+      "quoteSource": "TWSE MIS",
       "priceType": "trade"
     },
     "TWSE:5269": {
-      "price": 1320,
-      "prevClose": 1400,
-      "quoteTime": "2026-11-03T05:30:13.000Z",
-      "quoteSource": "Yahoo Finance",
+      "price": 1305,
+      "prevClose": 1320,
+      "quoteTime": "2026-11-04T01:35:51.000Z",
+      "quoteSource": "TWSE MIS",
       "priceType": "trade"
     }
   }
