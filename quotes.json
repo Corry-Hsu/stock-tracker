@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "attemptedAt": "2026-11-05T07:52:23.247Z",
-  "lastSuccessAt": "2026-11-05T07:52:23.247Z",
+  "attemptedAt": "2026-11-05T09:44:27.121Z",
+  "lastSuccessAt": "2026-11-05T09:44:27.121Z",
   "status": "ok",
   "requested": 13,
   "updated": 13,
@@ -12,7 +12,7 @@
       "source": "TWSE MIS",
       "status": "ok",
       "accepted": 13,
-      "durationMs": 843
+      "durationMs": 1178
     }
   ],
   "quotes": {
