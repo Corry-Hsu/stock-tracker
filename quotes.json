@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "attemptedAt": "2026-11-06T01:59:40.316Z",
-  "lastSuccessAt": "2026-11-06T01:59:40.316Z",
+  "attemptedAt": "2026-11-06T06:54:39.088Z",
+  "lastSuccessAt": "2026-11-06T06:54:39.088Z",
   "status": "ok",
   "requested": 13,
   "updated": 13,
@@ -9,102 +9,106 @@
   "timedOut": false,
   "sources": [
     {
-      "source": "TWSE MIS",
+      "source": "TWSE MI_INDEX 20261106",
       "status": "ok",
-      "accepted": 13,
-      "durationMs": 534
+      "accepted": 12
+    },
+    {
+      "source": "TPEx dailyQuotes 20261106",
+      "status": "ok",
+      "accepted": 1
     }
   ],
   "quotes": {
     "TWSE:3017": {
       "price": 2310,
       "prevClose": 2565,
-      "quoteTime": "2026-11-06T01:57:06.000Z",
-      "quoteSource": "TWSE MIS",
+      "quoteTime": "2026-11-06T05:30:00.000Z",
+      "quoteSource": "證交所盤後統計",
       "priceType": "trade"
     },
     "TWSE:2368": {
-      "price": 782,
+      "price": 813,
       "prevClose": 868,
-      "quoteTime": "2026-11-06T01:58:25.000Z",
-      "quoteSource": "TWSE MIS",
+      "quoteTime": "2026-11-06T05:30:00.000Z",
+      "quoteSource": "證交所盤後統計",
       "priceType": "trade"
     },
     "TWSE:3231": {
-      "price": 159,
+      "price": 160,
       "prevClose": 168.5,
-      "quoteTime": "2026-11-06T01:59:12.000Z",
-      "quoteSource": "TWSE MIS",
+      "quoteTime": "2026-11-06T05:30:00.000Z",
+      "quoteSource": "證交所盤後統計",
       "priceType": "trade"
     },
     "TWSE:2330": {
-      "price": 2115,
+      "price": 2135,
       "prevClose": 2240,
-      "quoteTime": "2026-11-06T01:57:30.000Z",
-      "quoteSource": "TWSE MIS",
+      "quoteTime": "2026-11-06T05:30:00.000Z",
+      "quoteSource": "證交所盤後統計",
       "priceType": "trade"
     },
     "TWSE:2408": {
-      "price": 328,
+      "price": 343.5,
       "prevClose": 360,
-      "quoteTime": "2026-11-06T01:58:56.000Z",
-      "quoteSource": "TWSE MIS",
+      "quoteTime": "2026-11-06T05:30:00.000Z",
+      "quoteSource": "證交所盤後統計",
       "priceType": "trade"
     },
     "TWSE:6505": {
-      "price": 83.3,
+      "price": 85.7,
       "prevClose": 87.9,
-      "quoteTime": "2026-11-06T01:57:52.000Z",
-      "quoteSource": "TWSE MIS",
+      "quoteTime": "2026-11-06T05:30:00.000Z",
+      "quoteSource": "證交所盤後統計",
       "priceType": "trade"
     },
     "TPEX:6147": {
       "price": 142,
       "prevClose": 157.5,
-      "quoteTime": "2026-11-06T01:58:46.000Z",
-      "quoteSource": "TWSE MIS",
+      "quoteTime": "2026-11-06T05:30:00.000Z",
+      "quoteSource": "櫃買中心盤後統計",
       "priceType": "trade"
     },
     "TWSE:2449": {
       "price": 206,
       "prevClose": 228.5,
-      "quoteTime": "2026-11-06T01:58:16.000Z",
-      "quoteSource": "TWSE MIS",
+      "quoteTime": "2026-11-06T05:30:00.000Z",
+      "quoteSource": "證交所盤後統計",
       "priceType": "trade"
     },
     "TWSE:8021": {
-      "price": 306.5,
+      "price": 308.5,
       "prevClose": 340.5,
-      "quoteTime": "2026-11-06T01:58:19.000Z",
-      "quoteSource": "TWSE MIS",
+      "quoteTime": "2026-11-06T05:30:00.000Z",
+      "quoteSource": "證交所盤後統計",
       "priceType": "trade"
     },
     "TWSE:00981A": {
-      "price": 21.56,
+      "price": 21.46,
       "prevClose": 23.05,
-      "quoteTime": "2026-11-06T01:58:49.000Z",
-      "quoteSource": "TWSE MIS",
+      "quoteTime": "2026-11-06T05:30:00.000Z",
+      "quoteSource": "證交所盤後統計",
       "priceType": "trade"
     },
     "TWSE:1101": {
-      "price": 26.3,
+      "price": 26.75,
       "prevClose": 27.2,
-      "quoteTime": "2026-11-06T01:57:44.000Z",
-      "quoteSource": "TWSE MIS",
+      "quoteTime": "2026-11-06T05:30:00.000Z",
+      "quoteSource": "證交所盤後統計",
       "priceType": "trade"
     },
     "TWSE:1303": {
-      "price": 224.5,
+      "price": 239.5,
       "prevClose": 249,
-      "quoteTime": "2026-11-06T01:59:15.000Z",
-      "quoteSource": "TWSE MIS",
+      "quoteTime": "2026-11-06T05:30:00.000Z",
+      "quoteSource": "證交所盤後統計",
       "priceType": "trade"
     },
     "TWSE:5269": {
-      "price": 1140,
+      "price": 1160,
       "prevClose": 1220,
-      "quoteTime": "2026-11-06T01:35:32.000Z",
-      "quoteSource": "TWSE MIS",
+      "quoteTime": "2026-11-06T05:30:00.000Z",
+      "quoteSource": "證交所盤後統計",
       "priceType": "trade"
     }
   }
