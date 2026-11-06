@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "attemptedAt": "2026-11-06T06:54:39.088Z",
-  "lastSuccessAt": "2026-11-06T06:54:39.088Z",
+  "attemptedAt": "2026-11-06T07:53:00.028Z",
+  "lastSuccessAt": "2026-11-06T07:53:00.028Z",
   "status": "ok",
   "requested": 13,
   "updated": 13,
@@ -9,106 +9,188 @@
   "timedOut": false,
   "sources": [
     {
-      "source": "TWSE MI_INDEX 20261106",
-      "status": "ok",
-      "accepted": 12
+      "source": "TWSE MIS",
+      "status": "empty",
+      "accepted": 0,
+      "error": "No valid, recent trade quotes (or older than saved quotes)",
+      "durationMs": 824
     },
     {
-      "source": "TPEx dailyQuotes 20261106",
+      "source": "Cnyes",
+      "status": "error",
+      "accepted": 0,
+      "error": "Cnyes 200: OK",
+      "durationMs": 811
+    },
+    {
+      "source": "Yahoo 3017.TW",
       "status": "ok",
-      "accepted": 1
+      "accepted": 1,
+      "durationMs": 140
+    },
+    {
+      "source": "Yahoo 2368.TW",
+      "status": "ok",
+      "accepted": 1,
+      "durationMs": 140
+    },
+    {
+      "source": "Yahoo 3231.TW",
+      "status": "ok",
+      "accepted": 1,
+      "durationMs": 78
+    },
+    {
+      "source": "Yahoo 2330.TW",
+      "status": "ok",
+      "accepted": 1,
+      "durationMs": 76
+    },
+    {
+      "source": "Yahoo 2408.TW",
+      "status": "ok",
+      "accepted": 1,
+      "durationMs": 79
+    },
+    {
+      "source": "Yahoo 6505.TW",
+      "status": "ok",
+      "accepted": 1,
+      "durationMs": 77
+    },
+    {
+      "source": "Yahoo 6147.TWO",
+      "status": "ok",
+      "accepted": 1,
+      "durationMs": 78
+    },
+    {
+      "source": "Yahoo 2449.TW",
+      "status": "ok",
+      "accepted": 1,
+      "durationMs": 140
+    },
+    {
+      "source": "Yahoo 8021.TW",
+      "status": "ok",
+      "accepted": 1,
+      "durationMs": 142
+    },
+    {
+      "source": "Yahoo 00981A.TW",
+      "status": "ok",
+      "accepted": 1,
+      "durationMs": 76
+    },
+    {
+      "source": "Yahoo 1101.TW",
+      "status": "ok",
+      "accepted": 1,
+      "durationMs": 77
+    },
+    {
+      "source": "Yahoo 1303.TW",
+      "status": "ok",
+      "accepted": 1,
+      "durationMs": 146
+    },
+    {
+      "source": "Yahoo 5269.TW",
+      "status": "ok",
+      "accepted": 1,
+      "durationMs": 75
     }
   ],
   "quotes": {
     "TWSE:3017": {
       "price": 2310,
       "prevClose": 2565,
-      "quoteTime": "2026-11-06T05:30:00.000Z",
-      "quoteSource": "證交所盤後統計",
+      "quoteTime": "2026-11-06T05:30:11.000Z",
+      "quoteSource": "Yahoo Finance",
       "priceType": "trade"
     },
     "TWSE:2368": {
       "price": 813,
       "prevClose": 868,
-      "quoteTime": "2026-11-06T05:30:00.000Z",
-      "quoteSource": "證交所盤後統計",
+      "quoteTime": "2026-11-06T05:30:06.000Z",
+      "quoteSource": "Yahoo Finance",
       "priceType": "trade"
     },
     "TWSE:3231": {
       "price": 160,
       "prevClose": 168.5,
-      "quoteTime": "2026-11-06T05:30:00.000Z",
-      "quoteSource": "證交所盤後統計",
+      "quoteTime": "2026-11-06T05:30:05.000Z",
+      "quoteSource": "Yahoo Finance",
       "priceType": "trade"
     },
     "TWSE:2330": {
       "price": 2135,
       "prevClose": 2240,
-      "quoteTime": "2026-11-06T05:30:00.000Z",
-      "quoteSource": "證交所盤後統計",
+      "quoteTime": "2026-11-06T05:30:05.000Z",
+      "quoteSource": "Yahoo Finance",
       "priceType": "trade"
     },
     "TWSE:2408": {
       "price": 343.5,
       "prevClose": 360,
-      "quoteTime": "2026-11-06T05:30:00.000Z",
-      "quoteSource": "證交所盤後統計",
+      "quoteTime": "2026-11-06T05:30:03.000Z",
+      "quoteSource": "Yahoo Finance",
       "priceType": "trade"
     },
     "TWSE:6505": {
       "price": 85.7,
       "prevClose": 87.9,
-      "quoteTime": "2026-11-06T05:30:00.000Z",
-      "quoteSource": "證交所盤後統計",
+      "quoteTime": "2026-11-06T05:30:10.000Z",
+      "quoteSource": "Yahoo Finance",
       "priceType": "trade"
     },
     "TPEX:6147": {
       "price": 142,
       "prevClose": 157.5,
-      "quoteTime": "2026-11-06T05:30:00.000Z",
-      "quoteSource": "櫃買中心盤後統計",
+      "quoteTime": "2026-11-06T05:30:30.000Z",
+      "quoteSource": "Yahoo Finance",
       "priceType": "trade"
     },
     "TWSE:2449": {
       "price": 206,
       "prevClose": 228.5,
-      "quoteTime": "2026-11-06T05:30:00.000Z",
-      "quoteSource": "證交所盤後統計",
+      "quoteTime": "2026-11-06T05:30:10.000Z",
+      "quoteSource": "Yahoo Finance",
       "priceType": "trade"
     },
     "TWSE:8021": {
       "price": 308.5,
       "prevClose": 340.5,
-      "quoteTime": "2026-11-06T05:30:00.000Z",
-      "quoteSource": "證交所盤後統計",
+      "quoteTime": "2026-11-06T05:30:30.000Z",
+      "quoteSource": "Yahoo Finance",
       "priceType": "trade"
     },
     "TWSE:00981A": {
       "price": 21.46,
       "prevClose": 23.05,
-      "quoteTime": "2026-11-06T05:30:00.000Z",
-      "quoteSource": "證交所盤後統計",
+      "quoteTime": "2026-11-06T05:30:01.000Z",
+      "quoteSource": "Yahoo Finance",
       "priceType": "trade"
     },
     "TWSE:1101": {
       "price": 26.75,
       "prevClose": 27.2,
-      "quoteTime": "2026-11-06T05:30:00.000Z",
-      "quoteSource": "證交所盤後統計",
+      "quoteTime": "2026-11-06T05:30:17.000Z",
+      "quoteSource": "Yahoo Finance",
       "priceType": "trade"
     },
     "TWSE:1303": {
       "price": 239.5,
       "prevClose": 249,
-      "quoteTime": "2026-11-06T05:30:00.000Z",
-      "quoteSource": "證交所盤後統計",
+      "quoteTime": "2026-11-06T05:30:02.000Z",
+      "quoteSource": "Yahoo Finance",
       "priceType": "trade"
     },
     "TWSE:5269": {
       "price": 1160,
       "prevClose": 1220,
-      "quoteTime": "2026-11-06T05:30:00.000Z",
-      "quoteSource": "證交所盤後統計",
+      "quoteTime": "2026-11-06T05:30:10.000Z",
+      "quoteSource": "Yahoo Finance",
       "priceType": "trade"
     }
   }
