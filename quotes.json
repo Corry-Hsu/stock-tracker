@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "attemptedAt": "2026-11-11T01:55:27.895Z",
-  "lastSuccessAt": "2026-11-11T01:55:27.895Z",
+  "attemptedAt": "2026-11-16T07:24:27.455Z",
+  "lastSuccessAt": "2026-11-16T07:24:27.455Z",
   "status": "ok",
   "requested": 13,
   "updated": 13,
@@ -12,98 +12,98 @@
       "source": "TWSE MIS",
       "status": "ok",
       "accepted": 13,
-      "durationMs": 1563
+      "durationMs": 994
     }
   ],
   "quotes": {
     "TWSE:3017": {
-      "price": 2855,
-      "prevClose": 2790,
-      "quoteTime": "2026-11-11T01:51:26.000Z",
+      "price": 2740,
+      "prevClose": 3040,
+      "quoteTime": "2026-11-16T05:30:00.000Z",
       "quoteSource": "TWSE MIS",
       "priceType": "trade"
     },
     "TWSE:2368": {
-      "price": 1015,
-      "prevClose": 983,
-      "quoteTime": "2026-11-11T01:52:41.000Z",
+      "price": 927,
+      "prevClose": 1030,
+      "quoteTime": "2026-11-16T05:30:00.000Z",
       "quoteSource": "TWSE MIS",
       "priceType": "trade"
     },
     "TWSE:3231": {
-      "price": 171,
+      "price": 159,
       "prevClose": 171,
-      "quoteTime": "2026-11-11T01:52:26.000Z",
+      "quoteTime": "2026-11-16T05:30:00.000Z",
       "quoteSource": "TWSE MIS",
       "priceType": "trade"
     },
     "TWSE:2330": {
-      "price": 2335,
-      "prevClose": 2285,
-      "quoteTime": "2026-11-11T01:54:45.000Z",
+      "price": 2215,
+      "prevClose": 2350,
+      "quoteTime": "2026-11-16T05:30:00.000Z",
       "quoteSource": "TWSE MIS",
       "priceType": "trade"
     },
     "TWSE:2408": {
-      "price": 380,
-      "prevClose": 383,
-      "quoteTime": "2026-11-11T01:54:41.000Z",
+      "price": 340,
+      "prevClose": 377,
+      "quoteTime": "2026-11-16T05:30:00.000Z",
       "quoteSource": "TWSE MIS",
       "priceType": "trade"
     },
     "TWSE:6505": {
-      "price": 89.3,
-      "prevClose": 89.6,
-      "quoteTime": "2026-11-11T01:53:03.000Z",
+      "price": 89.6,
+      "prevClose": 92.5,
+      "quoteTime": "2026-11-16T05:30:00.000Z",
       "quoteSource": "TWSE MIS",
       "priceType": "trade"
     },
     "TPEX:6147": {
-      "price": 167.5,
-      "prevClose": 169.5,
-      "quoteTime": "2026-11-11T01:54:02.000Z",
+      "price": 154.5,
+      "prevClose": 171.5,
+      "quoteTime": "2026-11-16T05:30:00.000Z",
       "quoteSource": "TWSE MIS",
       "priceType": "trade"
     },
     "TWSE:2449": {
-      "price": 225,
-      "prevClose": 227.5,
-      "quoteTime": "2026-11-11T01:49:16.000Z",
+      "price": 192.5,
+      "prevClose": 213.5,
+      "quoteTime": "2026-11-16T05:30:00.000Z",
       "quoteSource": "TWSE MIS",
       "priceType": "trade"
     },
     "TWSE:8021": {
-      "price": 376.5,
-      "prevClose": 369,
-      "quoteTime": "2026-11-11T01:54:47.000Z",
+      "price": 346.5,
+      "prevClose": 385,
+      "quoteTime": "2026-11-16T05:30:00.000Z",
       "quoteSource": "TWSE MIS",
       "priceType": "trade"
     },
     "TWSE:00981A": {
-      "price": 24.34,
-      "prevClose": 24.27,
-      "quoteTime": "2026-11-11T01:55:14.000Z",
+      "price": 22.5,
+      "prevClose": 24.7,
+      "quoteTime": "2026-11-16T05:30:00.000Z",
       "quoteSource": "TWSE MIS",
       "priceType": "trade"
     },
     "TWSE:1101": {
-      "price": 27.5,
-      "prevClose": 27.3,
-      "quoteTime": "2026-11-11T01:52:26.000Z",
+      "price": 26.45,
+      "prevClose": 27.35,
+      "quoteTime": "2026-11-16T05:30:00.000Z",
       "quoteSource": "TWSE MIS",
       "priceType": "trade"
     },
     "TWSE:1303": {
-      "price": 301,
-      "prevClose": 289,
-      "quoteTime": "2026-11-11T01:54:55.000Z",
+      "price": 274,
+      "prevClose": 304,
+      "quoteTime": "2026-11-16T05:30:00.000Z",
       "quoteSource": "TWSE MIS",
       "priceType": "trade"
     },
     "TWSE:5269": {
-      "price": 1130,
-      "prevClose": 1125,
-      "quoteTime": "2026-11-11T01:44:19.000Z",
+      "price": 1090,
+      "prevClose": 1165,
+      "quoteTime": "2026-11-16T05:30:00.000Z",
       "quoteSource": "TWSE MIS",
       "priceType": "trade"
     }
