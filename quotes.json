@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "attemptedAt": "2026-11-16T07:24:27.455Z",
-  "lastSuccessAt": "2026-11-16T07:24:27.455Z",
+  "attemptedAt": "2026-11-17T03:25:18.405Z",
+  "lastSuccessAt": "2026-11-17T03:25:18.405Z",
   "status": "ok",
   "requested": 13,
   "updated": 13,
@@ -12,98 +12,98 @@
       "source": "TWSE MIS",
       "status": "ok",
       "accepted": 13,
-      "durationMs": 994
+      "durationMs": 3868
     }
   ],
   "quotes": {
     "TWSE:3017": {
-      "price": 2740,
-      "prevClose": 3040,
-      "quoteTime": "2026-11-16T05:30:00.000Z",
+      "price": 2530,
+      "prevClose": 2740,
+      "quoteTime": "2026-11-17T03:22:55.000Z",
       "quoteSource": "TWSE MIS",
       "priceType": "trade"
     },
     "TWSE:2368": {
-      "price": 927,
-      "prevClose": 1030,
-      "quoteTime": "2026-11-16T05:30:00.000Z",
+      "price": 854,
+      "prevClose": 927,
+      "quoteTime": "2026-11-17T03:20:50.000Z",
       "quoteSource": "TWSE MIS",
       "priceType": "trade"
     },
     "TWSE:3231": {
-      "price": 159,
-      "prevClose": 171,
-      "quoteTime": "2026-11-16T05:30:00.000Z",
+      "price": 161,
+      "prevClose": 159,
+      "quoteTime": "2026-11-17T03:25:02.000Z",
       "quoteSource": "TWSE MIS",
       "priceType": "trade"
     },
     "TWSE:2330": {
-      "price": 2215,
-      "prevClose": 2350,
-      "quoteTime": "2026-11-16T05:30:00.000Z",
+      "price": 2210,
+      "prevClose": 2215,
+      "quoteTime": "2026-11-17T03:24:24.000Z",
       "quoteSource": "TWSE MIS",
       "priceType": "trade"
     },
     "TWSE:2408": {
-      "price": 340,
-      "prevClose": 377,
-      "quoteTime": "2026-11-16T05:30:00.000Z",
+      "price": 332,
+      "prevClose": 340,
+      "quoteTime": "2026-11-17T03:24:40.000Z",
       "quoteSource": "TWSE MIS",
       "priceType": "trade"
     },
     "TWSE:6505": {
-      "price": 89.6,
-      "prevClose": 92.5,
-      "quoteTime": "2026-11-16T05:30:00.000Z",
+      "price": 90.4,
+      "prevClose": 89.6,
+      "quoteTime": "2026-11-17T03:23:51.000Z",
       "quoteSource": "TWSE MIS",
       "priceType": "trade"
     },
     "TPEX:6147": {
-      "price": 154.5,
-      "prevClose": 171.5,
-      "quoteTime": "2026-11-16T05:30:00.000Z",
+      "price": 145.5,
+      "prevClose": 154.5,
+      "quoteTime": "2026-11-17T03:24:37.000Z",
       "quoteSource": "TWSE MIS",
       "priceType": "trade"
     },
     "TWSE:2449": {
-      "price": 192.5,
-      "prevClose": 213.5,
-      "quoteTime": "2026-11-16T05:30:00.000Z",
+      "price": 179,
+      "prevClose": 192.5,
+      "quoteTime": "2026-11-17T03:23:51.000Z",
       "quoteSource": "TWSE MIS",
       "priceType": "trade"
     },
     "TWSE:8021": {
-      "price": 346.5,
-      "prevClose": 385,
-      "quoteTime": "2026-11-16T05:30:00.000Z",
+      "price": 320.5,
+      "prevClose": 346.5,
+      "quoteTime": "2026-11-17T03:19:21.000Z",
       "quoteSource": "TWSE MIS",
       "priceType": "trade"
     },
     "TWSE:00981A": {
-      "price": 22.5,
-      "prevClose": 24.7,
-      "quoteTime": "2026-11-16T05:30:00.000Z",
+      "price": 21.79,
+      "prevClose": 22.5,
+      "quoteTime": "2026-11-17T03:24:14.000Z",
       "quoteSource": "TWSE MIS",
       "priceType": "trade"
     },
     "TWSE:1101": {
-      "price": 26.45,
-      "prevClose": 27.35,
-      "quoteTime": "2026-11-16T05:30:00.000Z",
+      "price": 27,
+      "prevClose": 26.45,
+      "quoteTime": "2026-11-17T03:24:18.000Z",
       "quoteSource": "TWSE MIS",
       "priceType": "trade"
     },
     "TWSE:1303": {
-      "price": 274,
-      "prevClose": 304,
-      "quoteTime": "2026-11-16T05:30:00.000Z",
+      "price": 270.5,
+      "prevClose": 274,
+      "quoteTime": "2026-11-17T03:22:30.000Z",
       "quoteSource": "TWSE MIS",
       "priceType": "trade"
     },
     "TWSE:5269": {
-      "price": 1090,
-      "prevClose": 1165,
-      "quoteTime": "2026-11-16T05:30:00.000Z",
+      "price": 1145,
+      "prevClose": 1090,
+      "quoteTime": "2026-11-17T03:20:18.000Z",
       "quoteSource": "TWSE MIS",
       "priceType": "trade"
     }
