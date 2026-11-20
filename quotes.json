@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "attemptedAt": "2026-11-20T06:50:29.785Z",
-  "lastSuccessAt": "2026-11-20T06:50:29.785Z",
+  "attemptedAt": "2026-11-20T07:13:31.661Z",
+  "lastSuccessAt": "2026-11-20T07:13:31.661Z",
   "status": "ok",
   "requested": 13,
   "updated": 13,
@@ -12,17 +12,10 @@
       "source": "TWSE MIS",
       "status": "ok",
       "accepted": 13,
-      "durationMs": 2378
+      "durationMs": 1637
     }
   ],
   "quotes": {
-    "TWSE:3017": {
-      "price": 2205,
-      "prevClose": 2445,
-      "quoteTime": "2026-11-20T05:30:00.000Z",
-      "quoteSource": "TWSE MIS",
-      "priceType": "trade"
-    },
     "TWSE:2368": {
       "price": 711,
       "prevClose": 790,
@@ -79,13 +72,6 @@
       "quoteSource": "TWSE MIS",
       "priceType": "trade"
     },
-    "TWSE:00981A": {
-      "price": 18.58,
-      "prevClose": 20.23,
-      "quoteTime": "2026-11-20T05:30:00.000Z",
-      "quoteSource": "TWSE MIS",
-      "priceType": "trade"
-    },
     "TWSE:1101": {
       "price": 24.35,
       "prevClose": 25.65,
@@ -100,9 +86,23 @@
       "quoteSource": "TWSE MIS",
       "priceType": "trade"
     },
+    "TWSE:00981A": {
+      "price": 18.58,
+      "prevClose": 20.23,
+      "quoteTime": "2026-11-20T05:30:00.000Z",
+      "quoteSource": "TWSE MIS",
+      "priceType": "trade"
+    },
     "TWSE:5269": {
       "price": 1065,
       "prevClose": 1180,
+      "quoteTime": "2026-11-20T05:30:00.000Z",
+      "quoteSource": "TWSE MIS",
+      "priceType": "trade"
+    },
+    "TWSE:0050": {
+      "price": 84.45,
+      "prevClose": 90.2,
       "quoteTime": "2026-11-20T05:30:00.000Z",
       "quoteSource": "TWSE MIS",
       "priceType": "trade"
