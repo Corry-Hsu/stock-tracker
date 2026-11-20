@@ -31,6 +31,67 @@ function cloudReport(overrides = {}) {
     } }, ...overrides };
 }
 
+test('November simulated trades preserve dates, FIFO shares and auditable estimated exits', () => {
+  const exits=seed.positions.filter(p=>p.exitDate==='2026-11-09');
+  assert.equal(exits.length,4);
+  for(const p of exits) {
+    assert.equal(p.exitPriceEstimated,true);
+    assert.equal(p.exitPrice, Math.round(p.exitPriceTurnover/p.exitPriceVolume*100)/100);
+    assert.match(p.exitPriceSourceUrl,/twse.com.tw/);
+    assert.equal(p.trackLive,false);
+  }
+  assert.equal(exits.find(p=>p.symbol==='2454').buyPrice,null);
+  assert.equal(exits.find(p=>p.symbol==='2454').shares,5);
+  assert.equal(exits.find(p=>p.symbol==='3017').shares,5);
+  const tsmcExit=exits.find(p=>p.symbol==='2330');
+  assert.equal(tsmcExit.buyPrice,2500);
+  assert.equal(tsmcExit.shares,5);
+  assert.equal(seed.positions.find(p=>p.id==='tw-2330-20261013').shares,5);
+  assert.equal(exits.find(p=>p.symbol==='00981A').buyPrice,29.15);
+  const purchases=seed.positions.filter(p=>p.tradeDate==='2026-11-17');
+  assert.equal(purchases.length,2);
+  assert.equal(purchases.reduce((sum,p)=>sum+p.buyPrice*p.shares,0),15675);
+});
+
+function olderBrowserPortfolio() {
+  const old=structuredClone(seed);
+  old.positions=old.positions.filter(p=>!['tw-2330-20261109-exit','tw-2454-20261109-exit','tw-2330-20261117','tw-0050-20261117'].includes(p.id));
+  for(const rule of seed.settings.positionDisposals) {
+    const p=old.positions.find(p=>p.id===rule.sourceId);
+    p.status='active';p.trackLive=true;p.shares=rule.expectedShares;
+    p.exitPrice=null;p.exitDate=null;p.note='local note preserved';p.buyPrice+=1;
+  }
+  return old;
+}
+
+test('published disposals update older caches once, preserve edited costs and never repeat a partial sale',()=>{
+  const a=app();a.ctx.cached=olderBrowserPortfolio();a.storage.clear();
+  a.run('localStorage.setItem(STORAGE_KEY, JSON.stringify(cached)); portfolioData=loadPortfolioState();');
+  const after=JSON.parse(a.run('JSON.stringify(portfolioData)'));
+  const partial=after.positions.find(p=>p.id==='tw-2330-20261109-exit');
+  assert.equal(partial.shares,5);assert.equal(partial.buyPrice,2501);
+  assert.ok(partial.note.startsWith('local note preserved'));
+  assert.equal(after.positions.find(p=>p.id==='tw-2330-20261013').shares,5);
+  assert.equal(after.positions.find(p=>p.id==='tw-3017-20260929').status,'exited');
+  assert.equal(after.positions.find(p=>p.id==='tw-00981A-20261020').status,'exited');
+  const before=a.run('JSON.stringify(portfolioData)');a.run('portfolioData=loadPortfolioState();');
+  assert.equal(a.run('JSON.stringify(portfolioData)'),before);
+  a.run('portfolioData.positions=portfolioData.positions.filter(p=>p.id!=="tw-2330-20261109-exit");savePortfolioState();portfolioData=loadPortfolioState();');
+  assert.equal(a.run('portfolioData.positions.some(p=>p.id==="tw-2330-20261109-exit")'),false);
+  assert.equal(a.run('portfolioData.positions.find(p=>p.id==="tw-2330-20261013").shares'),5);
+});
+
+test('disposal migration preserves conflicting local quantities and deleted source lots',()=>{
+  const a=app();const old=olderBrowserPortfolio();
+  old.positions.find(p=>p.id==='tw-2330-20261013').shares=99;
+  old.positions=old.positions.filter(p=>p.id!=='tw-3017-20260929');
+  a.ctx.cached=old;a.storage.clear();
+  a.run('localStorage.setItem(STORAGE_KEY, JSON.stringify(cached));portfolioData=loadPortfolioState();');
+  assert.equal(a.run('portfolioData.positions.find(p=>p.id==="tw-2330-20261013").shares'),99);
+  assert.equal(a.run('portfolioData.positions.some(p=>p.id==="tw-2330-20261109-exit")'),false);
+  assert.equal(a.run('portfolioData.positions.some(p=>p.id==="tw-3017-20260929")'),false);
+});
+
 test('page startup overlays cloud quotes onto cached local holdings', async () => {
   const calls = [];
   const a = app(async url => {
@@ -161,7 +222,7 @@ test('embedded fallback and deployed JSON agree and validate', () => {
 test('reject malformed holdings before applying data', () => {
   const a=app();
   for (const change of ['p.shares=-1','p.shares=1.5','p.buyPrice=null','p.currentPrice="12"','p.currentPrice=Infinity','p.symbol="<script>"','p.market="BAD"','p.status="bad"','p.trackLive=false','p.name=""']) {
-    assert.throws(()=>a.run(`{ const d=JSON.parse(JSON.stringify(DEFAULT_PORTFOLIO_JSON)); const p=d.positions[0]; ${change}; validatePortfolio(d); }`));
+    assert.throws(()=>a.run(`{ const d=JSON.parse(JSON.stringify(DEFAULT_PORTFOLIO_JSON)); const p=d.positions.find(p => p.status === "active"); ${change}; validatePortfolio(d); }`));
   }
   assert.throws(()=>a.run('validatePortfolio({positions:[null]})'));
   assert.throws(()=>a.run('validatePortfolio({positions:[DEFAULT_PORTFOLIO_JSON.positions[0],DEFAULT_PORTFOLIO_JSON.positions[0]]})'));
@@ -175,17 +236,17 @@ test('network failure leaves prices and update time unchanged and restores butto
 });
 test('partial success uses daily previous close, records quote time and leaves exited positions locked', async () => {
   const a=app(async url => {
-    if (!decodeURIComponent(url).includes('3017.TW')) throw Error('offline');
+    if (!decodeURIComponent(url).includes('2368.TW')) throw Error('offline');
     return { ok:true, json: async()=>({contents:JSON.stringify({chart:{result:[{meta:{regularMarketPrice:3200, regularMarketTime:1793151000, previousClose:3100, chartPreviousClose:3000}}]}})}) };
   });
   const exited=a.run('JSON.stringify(portfolioData.positions.filter(p=>p.status==="exited"))');
   await a.run('syncNetworkQuotes()');
-  assert.equal(a.run('portfolioData.positions[0].currentPrice'),3200);
-  assert.equal(a.run('portfolioData.positions[0].prevClose'),3100);
-  assert.equal(a.run('portfolioData.positions[1].currentPrice'),seed.positions[1].currentPrice);
+  assert.equal(a.run('portfolioData.positions[1].currentPrice'),3200);
+  assert.equal(a.run('portfolioData.positions[1].prevClose'),3100);
+  assert.equal(a.run('portfolioData.positions[2].currentPrice'),seed.positions[2].currentPrice);
   assert.equal(a.run('JSON.stringify(portfolioData.positions.filter(p=>p.status==="exited"))'),exited);
   assert.match(a.element('statusText').textContent, new RegExp('1/' + seed.positions.filter(p => p.status === 'active' && p.trackLive).length));
-  assert.match(a.run('quoteLabel(portfolioData.positions[0])'),/Yahoo/);
+  assert.match(a.run('quoteLabel(portfolioData.positions[1])'),/Yahoo/);
 });
 test('invalid payload never overwrites a stored price', async()=>{
   const a=app(async()=>({ok:true,json:async()=>({contents:'{"chart":{"result":[{"meta":{"regularMarketPrice":-10}}]}}'})}));
@@ -193,12 +254,12 @@ test('invalid payload never overwrites a stored price', async()=>{
   assert.equal(a.run('JSON.stringify(portfolioData)'),before);
 });
 test('exiting a position while its quote is in flight preserves it', async()=>{
-  const a=app(async()=>{ a.run('portfolioData.positions[0].status="exited"; portfolioData.positions[0].trackLive=false; portfolioData.positions[0].exitPrice=3333;');
+  const a=app(async()=>{ a.run('portfolioData.positions[1].status="exited"; portfolioData.positions[1].trackLive=false; portfolioData.positions[1].exitPrice=3333;');
     return {ok:true,json:async()=>({contents:JSON.stringify({chart:{result:[{meta:{regularMarketPrice:3400,regularMarketTime:1793151000}}]}})})};
   });
   await a.run('syncNetworkQuotes()');
-  assert.equal(a.run('portfolioData.positions[0].currentPrice'),seed.positions[0].currentPrice);
-  assert.equal(a.run('portfolioData.positions[0].exitPrice'),3333);
+  assert.equal(a.run('portfolioData.positions[1].currentPrice'),seed.positions[1].currentPrice);
+  assert.equal(a.run('portfolioData.positions[1].exitPrice'),3333);
 });
 test('KPI matches sum of the active positions and excludes unknown exited costs',()=>{
   const a=app(); a.run('renderKPIs()');
@@ -207,7 +268,8 @@ test('KPI matches sum of the active positions and excludes unknown exited costs'
   const cost=active.reduce((n,p)=>n+p.buyPrice*p.shares,0);
   assert.equal(a.element('kpiMarketValue').textContent, a.run(`fmtCurrency(${value})`));
   assert.equal(a.element('kpiUnrealizedPnl').textContent,a.run(`fmtSignedCurrency(${value-cost})`));
-  assert.equal(a.element('kpiRealizedPnl').textContent,'點編輯可補買價');
+  const realized=seed.positions.filter(p=>p.status==='exited' && p.buyPrice > 0).reduce((sum,p)=>sum+(p.exitPrice-p.buyPrice)*p.shares,0);
+  assert.equal(a.element('kpiRealizedPnl').textContent,a.run('fmtSignedCurrency('+realized+')'));
 });
 test('edit saves notes and TPEX market; invalid shares do not mutate portfolio',()=>{
   const a=app(); a.run('openPositionModal(portfolioData.positions[0])');
@@ -221,7 +283,7 @@ test('edit saves notes and TPEX market; invalid shares do not mutate portfolio',
   assert.equal(a.run('JSON.stringify(portfolioData)'),before);
 });
 test('HTML attributes escape imported IDs',()=>{
-  const a=app(); a.run('portfolioData.positions[0].id=\'x" onfocus="alert(1)\'; renderTables()');
+  const a=app(); a.run('portfolioData.positions.find(p=>p.status === "active").id=\'x" onfocus="alert(1)\'; renderTables()');
   assert.ok(!a.element('activeTableBody').innerHTML.includes('data-id="x" onfocus='));
   assert.match(a.element('activeTableBody').innerHTML,/x&quot; onfocus=&quot;alert/);
 });
@@ -315,9 +377,10 @@ test('groups multiple lots of the same symbol with weighted average cost, latest
   assert.equal(nanyaPlastics.totalShares, 150);
   assert.equal(nanyaPlastics.avgBuyPrice, 310);
   const etf = groups.find(g => g.symbol === '00981A');
-  assert.equal(etf.items.length, 2);
-  assert.equal(etf.totalShares, 2000);
-  assert.equal(Number(etf.avgBuyPrice.toFixed(2)), 27.84);
+  const etfLots=seed.positions.filter(p=>p.symbol==='00981A' && p.status==='active');
+  assert.equal(etf.items.length, etfLots.length);
+  assert.equal(etf.totalShares, etfLots.reduce((sum,p)=>sum+p.shares,0));
+  assert.equal(etf.avgBuyPrice, etf.totalCost/etf.totalShares);
 });
 
 test('only renders second-level detail toggle for symbols with 2 or more lots', () => {
@@ -340,7 +403,7 @@ test('only renders second-level detail toggle for symbols with 2 or more lots', 
   assert.ok(desktopHtml.includes('▼ 明細 (2)'));
   assert.ok(desktopHtml.includes('data-group-key="active:TPEX:6147"'));
   assert.ok(desktopHtml.includes('data-group-key="active:TWSE:1303"'));
-  assert.ok(desktopHtml.includes('data-group-key="active:TWSE:00981A"'));
+  assert.equal(desktopHtml.includes('data-group-key="active:TWSE:00981A"'), seed.positions.filter(p=>p.symbol==='00981A' && p.status==='active').length > 1);
 });
 
 test('FinMind EOD database is completely removed so intraday sync never overwrites prices with yesterday close', () => {
@@ -399,14 +462,14 @@ test('parallel batch success renders while other sources are pending and deadlin
     signals.push(options.signal);
     if (url.startsWith('https://ws.api.cnyes.com/')) {
       return { ok: true, json: async () => ({ data: { items: [
-        { '200010': '3017', '6': 3200, '21': 3100, '200007': 1793584200 }
+        { '200010': '2368', '6': 3200, '21': 3100, '200007': 1793584200 }
       ] } }) };
     }
     return new Promise(resolve => { resolveSlow = resolve; });
   }, { setTimeout: (fn, ms) => setTimeout(fn, ms === 12000 ? 50 : 500) });
   const pending = a.run('syncNetworkQuotes()');
   await new Promise(resolve => setTimeout(resolve, 10));
-  assert.equal(a.run('portfolioData.positions[0].currentPrice'), 3200);
+  assert.equal(a.run('portfolioData.positions[1].currentPrice'), 3200);
   assert.match(a.element('statusText').textContent, /同步中/);
   assert.equal(a.element('btnLiveFetch').disabled, true);
   assert.ok(signals.length >= 3);
@@ -435,3 +498,5 @@ test('failed sync reports HTTP errors and preserves saved prices', async () => {
   assert.match(a.element('statusText').textContent, /HTTP 429/);
   assert.match(a.element('statusText').textContent, /未更新/);
 });
+
+
