@@ -1,25 +1,23 @@
 <!DOCTYPE html>
-<html lang="zh-Hant" class="dark">
+<html lang="zh-Hant" class="dark" data-type="software" data-radius="sharp" data-motion>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
-  <title>台股即時報酬看盤系統</title>
-  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&family=Noto+Sans+TC:wght@500;700;900&display=swap" rel="stylesheet">
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['"Noto Sans TC"', 'Inter', 'sans-serif'],
-            mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace']
-          }
-        }
-      }
-    }
-  </script>
+  <title>Stock Tracker · 台股投資組合</title>
+  <meta name="description" content="追蹤台股持倉、檢視損益與市值配置，管理每一筆買進與出場紀錄。">
+  <meta name="page-type" content="software"><meta name="site-kind" content="software">
+  <meta name="theme-color" content="#0a0d14">
+  <meta property="og:title" content="Stock Tracker · 台股投資組合">
+  <meta property="og:description" content="持倉、損益與市值配置，集中在一個投資工作台。">
+  <meta property="og:type" content="website">
+  <link rel="icon" href="assets/favicon.svg">
+  <link rel="canonical" href="https://corry-hsu.github.io/stock-tracker/">
+  <link rel="stylesheet" href="styles/utilities.css">
+  <link rel="stylesheet" href="assets/motion/motion.css">
+  <link rel="stylesheet" href="assets/moments/liquid-type/moment.css">
+  <link rel="stylesheet" href="styles/workspace.css">
+  <script>document.documentElement.classList.add('m-enter')</script>
+  <script src="assets/vendor/chart.umd.min.js"></script>
   <style>
     html {
       font-size: 15.5px;
@@ -30,7 +28,7 @@
       }
     }
     body {
-      font-family: 'Noto Sans TC', 'Inter', sans-serif;
+      font-family: 'Instrument Sans', 'Noto Sans TC', sans-serif;
       transition: background-color 0.2s ease, color 0.2s ease;
       -webkit-tap-highlight-color: transparent;
     }
@@ -61,38 +59,23 @@
     }
   </style>
 </head>
-<body class="min-h-screen flex flex-col bg-[#F8FAFC] dark:bg-[#0B0F19] text-slate-900 dark:text-slate-100 selection:bg-indigo-600 selection:text-white overflow-x-hidden">
+<body class="min-h-screen flex flex-col bg-[#F8FAFC] dark:bg-[#0B0F19] text-slate-900 dark:text-slate-100 selection:bg-sky-600 selection:text-white overflow-x-hidden">
 
-  <!-- Top Navigation & Responsive Control Bar -->
-  <header class="sticky top-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur border-b-2 border-slate-200 dark:border-slate-800 px-3.5 py-3 sm:px-6 sm:py-3.5 shadow-sm">
-    <div class="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-      
-      <!-- Top Row on Mobile: Brand Title + Theme Switch -->
-      <div class="flex items-center justify-between gap-2">
-        <div class="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
-          <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-rose-600 dark:bg-rose-500 flex items-center justify-center shadow-md shrink-0">
-            <svg class="w-6 h-6 sm:w-7 sm:h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
-            </svg>
-          </div>
-          <div class="min-w-0">
-            <div class="flex flex-wrap items-center gap-2">
-              <h1 class="text-lg sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight truncate">台股即時報酬看盤系統</h1>
-              <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] sm:text-xs font-bold bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 shrink-0">
-                <span class="text-red-600 dark:text-rose-400">紅漲 ▲</span>
-                <span class="text-slate-400 dark:text-slate-500">/</span>
-                <span class="text-emerald-600 dark:text-emerald-400">綠跌 ▼</span>
-              </span>
-            </div>
-            <div class="flex items-start gap-1.5 mt-0.5 text-xs text-slate-600 dark:text-slate-400 font-medium">
-              <span id="statusDot" class="w-2 h-2 rounded-full bg-emerald-500 inline-block shrink-0"></span>
-              <span id="statusText" class="whitespace-normal break-words" role="status" aria-live="polite">已載入儲存價格；尚未同步網路報價</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Sun / Moon Toggle Switch (Visible on right side of mobile top row, or inside desktop toolbar) -->
-        <button
+  <!-- software / blue-black-cornflower / Instrument Sans / sharp; live portfolio workspace -->
+  <a href="#workspace" class="skip-link">跳至投資組合</a>
+  <aside class="workspace-rail" aria-label="工作台導覽">
+    <a class="workspace-brand" href="./" aria-label="Stock Tracker 首頁"><span class="brand-mark" aria-hidden="true">st.</span><span>stock<span class="brand-light">tracker</span><small>個人投資工作台</small></span></a>
+    <div class="rail-caption">工作空間</div>
+    <nav class="workspace-tabs" aria-label="主要頁面">
+      <button type="button" data-tab="tab-portfolio" class="main-tab-btn bg-sky-600 text-white"><span aria-hidden="true">▤</span>投資組合</button>
+      <button type="button" data-tab="tab-analytics" class="main-tab-btn"><span aria-hidden="true">◴</span>損益分析</button>
+      <button type="button" data-tab="tab-json" class="main-tab-btn"><span aria-hidden="true">{ }</span>資料管理</button>
+    </nav>
+    <div class="rail-bottom"><span class="privacy-dot"></span>資料儲存在此瀏覽器<p>定期匯出，保留你的投資紀錄。</p><div class="rail-rule"></div><span>台灣市場</span><b>TWSE / TPEX</b></div>
+  </aside>
+  <header class="workspace-header">
+    <div class="workspace-breadcrumb">我的工作空間 <span>/</span> <strong>台股追蹤</strong></div>
+    <div class="header-actions"><button
           id="btnThemeToggle"
           type="button"
           role="switch"
@@ -108,7 +91,7 @@
             </svg>
           </span>
           <!-- Moon Icon (Right) -->
-          <span class="w-6 h-6 flex items-center justify-center text-indigo-300 z-10 ml-auto mr-0.5">
+          <span class="w-6 h-6 flex items-center justify-center text-sky-300 z-10 ml-auto mr-0.5">
             <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
               <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path>
             </svg>
@@ -116,120 +99,20 @@
           <!-- Sliding Knob -->
           <span
             id="themeToggleKnob"
-            class="absolute left-1 top-1 w-6 h-6 rounded-full bg-white dark:bg-indigo-600 shadow-md transform transition-transform duration-200 translate-x-7"
+            class="absolute left-1 top-1 w-6 h-6 rounded-full bg-white dark:bg-sky-600 shadow-md transform transition-transform duration-200 translate-x-5"
           ></span>
-        </button>
-      </div>
-
-      <!-- Second Row on Mobile: 3 Equal-Width Action Buttons / Inline on Desktop -->
-      <div class="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2">
-        <!-- Sync Quotes Button -->
-        <button id="btnLiveFetch" type="button" class="inline-flex items-center justify-center gap-1.5 px-2.5 py-2 sm:px-4 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white transition shadow-sm whitespace-nowrap">
-          <svg id="iconRefresh" class="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-          </svg>
-          <span>同步網路報價</span>
-        </button>
-
-
-        <!-- Add Stock Button -->
-        <button id="btnOpenAddModal" type="button" class="inline-flex items-center justify-center gap-1 px-2.5 py-2 sm:px-4 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-rose-600 hover:bg-rose-700 text-white transition shadow-sm whitespace-nowrap">
-          <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path>
-          </svg>
-          <span>新增標的</span>
-        </button>
-      </div>
-
-    </div>
+        </button><button id="btnExportJson" type="button" aria-label="匯出備份" class="btn utility-button"><span class="export-label">匯出備份</span> <span aria-hidden="true">↗</span></button></div>
   </header>
-
   <!-- Main Content -->
-  <main class="flex-1 max-w-7xl w-full mx-auto px-3.5 py-4 sm:px-6 sm:py-6 space-y-5 sm:space-y-6">
-
-    <!-- Main View Switcher Tabs & Filter Bar -->
-    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b-2 border-slate-200 dark:border-slate-800 pb-3.5">
-      <!-- Tabs: 3-column grid on mobile so it never wraps awkwardly -->
-      <div class="grid grid-cols-3 sm:flex sm:flex-wrap items-center gap-1.5 sm:gap-2" role="tablist">
-        <button type="button" data-tab="tab-portfolio" class="main-tab-btn justify-center px-2 py-2 sm:px-4 sm:py-2.5 rounded-xl text-xs sm:text-base font-bold bg-indigo-600 text-white shadow-sm transition text-center truncate">
-          即時持倉與已出場清單
-        </button>
-        <button type="button" data-tab="tab-json" class="main-tab-btn justify-center px-2 py-2 sm:px-4 sm:py-2.5 rounded-xl text-xs sm:text-base font-bold bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border-2 border-slate-300 dark:border-slate-800 transition flex items-center gap-1 text-center truncate">
-          <span class="truncate">JSON 資料結構編輯器</span>
-          <span class="hidden sm:inline-block px-1.5 py-0.5 text-xs rounded bg-indigo-100 dark:bg-indigo-500/20 text-indigo-800 dark:text-indigo-300 font-mono">Schema</span>
-        </button>
-        <button type="button" data-tab="tab-analytics" class="main-tab-btn justify-center px-2 py-2 sm:px-4 sm:py-2.5 rounded-xl text-xs sm:text-base font-bold bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border-2 border-slate-300 dark:border-slate-800 transition text-center truncate">
-          視覺化報酬與配置圖表
-        </button>
-      </div>
-
-      <!-- Filter & Search Bar -->
-      <div id="portfolioFilterBar" class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-        <div class="grid grid-cols-3 sm:inline-flex rounded-xl bg-slate-200/80 dark:bg-slate-900 p-1 border border-slate-300 dark:border-slate-800">
-          <button type="button" data-filter="all" class="status-filter-btn px-2 py-1.5 sm:px-3 rounded-lg text-xs sm:text-sm font-bold bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm text-center">全部顯示</button>
-          <button type="button" data-filter="active" class="status-filter-btn px-2 py-1.5 sm:px-3 rounded-lg text-xs sm:text-sm font-bold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white text-center">追蹤中 (Active)</button>
-          <button type="button" data-filter="exited" class="status-filter-btn px-2 py-1.5 sm:px-3 rounded-lg text-xs sm:text-sm font-bold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white text-center">已出場固定 (Exited)</button>
-        </div>
-
-        <div class="relative flex-1 sm:flex-initial">
-          <input id="searchInput" type="text" placeholder="搜尋股票名稱或代號..." class="w-full sm:w-56 bg-white dark:bg-slate-900 border-2 border-slate-300 dark:border-slate-800 rounded-xl pl-9 pr-3 py-2 text-sm font-medium text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-indigo-600">
-          <svg class="w-4 h-4 text-slate-400 absolute left-3 top-2.5 sm:top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-          </svg>
-        </div>
-      </div>
+  <main id="workspace" class="workspace-main">
+    <div class="workspace-heading hero" data-enter>
+      <div><div class="page-eyebrow">Portfolio overview <span>· NTD</span></div><h1 data-moment="liquid-type">台股投資組合</h1><p>從每一筆持倉，看見資產的全貌。</p></div>
+      <div class="page-actions"><button id="btnLiveFetch" type="button" class="btn utility-button"><svg id="iconRefresh" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6 8a7 7 0 0 1 12-2l2 6M4 12l2 6a7 7 0 0 0 12-2"/></svg>同步報價</button><button id="btnOpenAddModal" type="button" class="btn primary-button"><span aria-hidden="true">＋</span>新增標的</button></div>
     </div>
-
-    <!-- TAB 1: PORTFOLIO (Responsive Cards on Mobile + Full Table on Desktop) -->
-    <section id="tab-portfolio" class="tab-panel space-y-6 sm:space-y-8">
-
-      <!-- 1. Active Tracking Section (First Priority) -->
-      <div id="activeSectionWrapper" class="space-y-3">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <div class="flex items-center gap-2 flex-wrap">
-            <span class="w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-full bg-rose-600 dark:bg-rose-500"></span>
-            <h2 class="text-base sm:text-xl font-black text-slate-900 dark:text-white">即時追蹤中標的 (同標的自動合併總覽)</h2>
-            <button id="btnToggleAllGroups" type="button" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:hover:bg-indigo-500/25 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30 transition">
-              展開全部明細
-            </button>
-          </div>
-          <div class="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-400">
-            💡 點擊「<b>分批明細</b>」可展開各次買進紀錄；修改現價會同步套用至同標的
-          </div>
-        </div>
-
-        <!-- MOBILE ONLY: Native App-Style Stock Cards (< 768px) -->
-        <div id="activeMobileCards" class="md:hidden space-y-3">
-          <!-- Populated by JS -->
-        </div>
-
-        <!-- DESKTOP ONLY: Full Data Table (>= 768px) -->
-        <div class="hidden md:block bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
-          <div class="overflow-x-auto custom-scrollbar">
-            <table class="w-full text-left border-collapse">
-              <thead>
-                <tr class="border-b-2 border-slate-200 dark:border-slate-800 text-sm font-bold text-slate-700 dark:text-slate-300 bg-slate-100/90 dark:bg-slate-950/70">
-                  <th class="py-4 px-4">股票名稱 / 代號</th>
-                  <th class="py-4 px-3 text-right">合計股數與總成本</th>
-                  <th class="py-4 px-3 text-right">平均成本價</th>
-                  <th class="py-4 px-3 text-right">目前現價 (可改)</th>
-                  <th class="py-4 px-3 text-right">今日漲跌</th>
-                  <th class="py-4 px-3 text-right">總累積損益</th>
-                  <th class="py-4 px-3 text-right">平均報酬率</th>
-                  <th class="py-4 px-4">最新買進 / 最高目標價</th>
-                  <th class="py-4 px-4 text-right">分批明細 / 操作</th>
-                </tr>
-              </thead>
-              <tbody id="activeTableBody" class="divide-y-2 divide-slate-100 dark:divide-slate-800/80 text-base">
-                <!-- Populated by JS -->
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+    <div class="quote-status"><span id="statusDot" class="privacy-dot"></span><span id="statusText" role="status" aria-live="polite">已載入儲存價格；尚未同步網路報價</span><span class="quote-legend">紅漲 <b>↑</b> ／ 綠跌 <i>↓</i></span></div>
 
       <!-- 2. KPI Summary Cards (2x2 Compact Grid on Mobile, 4 Columns on Desktop) -->
-      <section class="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+      <section class="overview-metrics" aria-label="投資組合總覽">
         <!-- Card 1: 總持倉市值 -->
         <div class="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 sm:p-5 shadow-sm flex flex-col justify-between">
           <div>
@@ -299,12 +182,65 @@
         </div>
       </section>
 
+    <section id="allocationOverview" class="allocation-overview" aria-label="持倉配置概覽"><div class="allocation-heading"><h2>持倉配置</h2><span>依目前市值</span></div><div id="allocationStrip"></div></section>
+    <div id="portfolioFilterBar" class="portfolio-toolbar">
+      <div class="filter-segment" aria-label="持倉狀態篩選"><button type="button" data-filter="all" class="status-filter-btn bg-white shadow-sm">全部紀錄</button><button type="button" data-filter="active" class="status-filter-btn">追蹤中</button><button type="button" data-filter="exited" class="status-filter-btn">已出場</button></div>
+      <label class="search-field"><span class="search-label">搜尋股票</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg><input id="searchInput" type="search" aria-label="搜尋股票名稱或代號" placeholder="搜尋名稱或代號"></label>
+    </div>
+    <!-- TAB 1: PORTFOLIO (Responsive Cards on Mobile + Full Table on Desktop) -->
+    <section id="tab-portfolio" class="tab-panel space-y-6 sm:space-y-8">
+
+      <!-- 1. Active Tracking Section (First Priority) -->
+      <div id="activeSectionWrapper" class="space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-full bg-rose-600 dark:bg-rose-500"></span>
+            <h2 class="text-base sm:text-xl font-black text-slate-900 dark:text-white">持倉明細</h2>
+            <button id="btnToggleAllGroups" type="button" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-sky-50 hover:bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:hover:bg-sky-500/25 dark:text-sky-300 border border-sky-200 dark:border-sky-500/30 transition">
+              展開全部明細
+            </button>
+          </div>
+          <div class="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-400">
+            同標的合併顯示 · 展開查看分批買進
+          </div>
+        </div>
+
+        <!-- MOBILE ONLY: Native App-Style Stock Cards (< 768px) -->
+        <div id="activeMobileCards" class="md:hidden space-y-3">
+          <!-- Populated by JS -->
+        </div>
+
+        <!-- DESKTOP ONLY: Full Data Table (>= 768px) -->
+        <div class="hidden md:block bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+          <div class="overflow-x-auto custom-scrollbar">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="border-b-2 border-slate-200 dark:border-slate-800 text-sm font-bold text-slate-700 dark:text-slate-300 bg-slate-100/90 dark:bg-slate-950/70">
+                  <th class="py-4 px-4">股票名稱 / 代號</th>
+                  <th class="py-4 px-3 text-right">合計股數與總成本</th>
+                  <th class="py-4 px-3 text-right">平均成本價</th>
+                  <th class="py-4 px-3 text-right">目前現價 (可改)</th>
+                  <th class="py-4 px-3 text-right">今日漲跌</th>
+                  <th class="py-4 px-3 text-right">總累積損益</th>
+                  <th class="py-4 px-3 text-right">平均報酬率</th>
+                  <th class="py-4 px-4">最新買進 / 最高目標價</th>
+                  <th class="py-4 px-4 text-right">分批明細 / 操作</th>
+                </tr>
+              </thead>
+              <tbody id="activeTableBody" class="divide-y-2 divide-slate-100 dark:divide-slate-800/80 text-base">
+                <!-- Populated by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <!-- 3. Exited / Locked Section -->
       <div id="exitedSectionWrapper" class="space-y-3">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div class="flex items-center gap-2">
             <span class="w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-full bg-amber-500"></span>
-            <h2 class="text-base sm:text-xl font-black text-slate-900 dark:text-white">已出場固定標的 (Exited & Locked — 不再追蹤現價)</h2>
+            <h2 class="text-base sm:text-xl font-black text-slate-900 dark:text-white">已出場紀錄</h2>
           </div>
           <span class="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-400">價格已固定於賣出成交價，不會隨大盤跳動</span>
         </div>
@@ -339,15 +275,15 @@
       </div>
 
       <!-- 4. Notice Banner for Assumed Shares / Missing Cost (At the very bottom) -->
-      <div class="bg-indigo-50 dark:bg-indigo-950/40 border-2 border-indigo-200 dark:border-indigo-500/30 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 text-xs sm:text-base text-slate-800 dark:text-indigo-200">
+      <div class="bg-sky-50 dark:bg-sky-950/40 border-2 border-sky-200 dark:border-sky-500/30 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 text-xs sm:text-base text-slate-800 dark:text-sky-200">
         <div class="flex items-start gap-2.5">
-          <span class="text-lg sm:text-xl shrink-0">📌</span>
+          <span class="text-lg sm:text-xl shrink-0">ⓘ</span>
           <div class="leading-relaxed">
-            <span class="font-black text-indigo-950 dark:text-white">貼心提示：</span>
-            先前未註明股數之標的（<b class="text-indigo-800 dark:text-indigo-300">緯創 3231、尖點 8021、高僑 6234</b>）已改以 <b class="font-mono text-rose-700 dark:text-amber-300">100 股</b> 計算；10/15 與 10/16 補進未註明股數與價格之標的（<b class="text-indigo-800 dark:text-indigo-300">台積電、南亞科、台塑化、頎邦、京元電子</b>）預設以 <b class="font-mono text-rose-700 dark:text-amber-300">20 股</b> 及<b>當日市場均價</b>計算，可隨時點擊「<b>編輯</b>」調整！
+            <span class="font-black text-sky-950 dark:text-white">貼心提示：</span>
+            先前未註明股數之標的（<b class="text-sky-800 dark:text-sky-300">緯創 3231、尖點 8021、高僑 6234</b>）已改以 <b class="font-mono text-rose-700 dark:text-amber-300">100 股</b> 計算；10/15 與 10/16 補進未註明股數與價格之標的（<b class="text-sky-800 dark:text-sky-300">台積電、南亞科、台塑化、頎邦、京元電子</b>）預設以 <b class="font-mono text-rose-700 dark:text-amber-300">20 股</b> 及<b>當日市場均價</b>計算，可隨時點擊「<b>編輯</b>」調整！
           </div>
         </div>
-        <button id="btnQuickJumpJson" type="button" class="w-full sm:w-auto shrink-0 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm transition shadow-sm text-center">
+        <button id="btnQuickJumpJson" type="button" class="w-full sm:w-auto shrink-0 px-4 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs sm:text-sm transition shadow-sm text-center">
           查看 JSON 格式 →
         </button>
       </div>
@@ -368,7 +304,7 @@
               <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-1">直接修改下方 JSON 即可批次新增、刪除標的，或將 <code class="text-rose-600 dark:text-amber-300 font-bold">status</code> 改為 <code class="text-rose-600 dark:text-amber-300 font-bold">"exited"</code> 固定出場不再追蹤。</p>
             </div>
             <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-              <button id="btnApplyJson" type="button" class="flex-1 sm:flex-initial px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white transition shadow-sm">
+              <button id="btnApplyJson" type="button" class="flex-1 sm:flex-initial px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-sky-600 hover:bg-sky-700 text-white transition shadow-sm">
                 套用 JSON 更新看板
               </button>
               <button id="btnCopyJson" type="button" class="px-3 py-2 rounded-xl text-xs sm:text-sm font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 transition">
@@ -387,7 +323,7 @@
             </div>
           </div>
 
-          <textarea id="jsonEditorTextarea" rows="18" spellcheck="false" class="w-full flex-1 bg-slate-950 border-2 border-slate-300 dark:border-slate-800 rounded-xl p-3.5 sm:p-4 font-mono text-xs sm:text-sm text-emerald-300 focus:outline-none focus:border-indigo-500 custom-scrollbar leading-relaxed"></textarea>
+          <textarea id="jsonEditorTextarea" rows="18" spellcheck="false" class="w-full flex-1 bg-slate-950 border-2 border-slate-300 dark:border-slate-800 rounded-xl p-3.5 sm:p-4 font-mono text-xs sm:text-sm text-emerald-300 focus:outline-none focus:border-sky-500 custom-scrollbar leading-relaxed"></textarea>
 
           <div id="jsonErrorBox" class="hidden rounded-xl bg-rose-100 dark:bg-rose-950/70 border border-rose-400 p-3 text-xs sm:text-sm text-rose-800 dark:text-rose-200 font-mono"></div>
         </div>
@@ -397,7 +333,7 @@
           <h3 class="text-base font-black text-slate-900 dark:text-white border-b-2 border-slate-100 dark:border-slate-800 pb-3">JSON 欄位設計規範 (Schema)</h3>
           <div class="space-y-4 text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
             <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2">
-              <div class="font-bold text-indigo-700 dark:text-indigo-300">1. 如何切換「追蹤中」與「已出場固定」？</div>
+              <div class="font-bold text-sky-700 dark:text-sky-300">1. 如何切換「追蹤中」與「已出場固定」？</div>
               <p class="text-slate-600 dark:text-slate-400">每個標的物件只需設定以下兩個欄位即可控制：</p>
               <ul class="list-disc list-inside space-y-1 font-mono text-xs bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800">
                 <li>"status": "active" | "exited"</li>
@@ -406,10 +342,10 @@
             </div>
 
             <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2">
-              <div class="font-bold text-indigo-700 dark:text-indigo-300">2. 快速插入範本按鈕</div>
+              <div class="font-bold text-sky-700 dark:text-sky-300">2. 快速插入範本按鈕</div>
               <p class="text-slate-600 dark:text-slate-400 text-xs">點擊下方按鈕可直接在 JSON 陣列新增一筆範本：</p>
               <div class="grid grid-cols-1 gap-2.5 pt-1">
-                <button id="btnInsertActiveTemplate" type="button" class="px-3 py-2.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-600/20 dark:hover:bg-indigo-600/30 text-indigo-800 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-500/30 text-sm font-bold transition">
+                <button id="btnInsertActiveTemplate" type="button" class="px-3 py-2.5 rounded-xl bg-sky-50 hover:bg-sky-100 dark:bg-sky-600/20 dark:hover:bg-sky-600/30 text-sky-800 dark:text-sky-300 border border-sky-300 dark:border-sky-500/30 text-sm font-bold transition">
                   + 插入「買進追蹤」範本
                 </button>
                 <button id="btnInsertExitedTemplate" type="button" class="px-3 py-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-500/15 dark:hover:bg-amber-500/25 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-500/30 text-sm font-bold transition">
@@ -451,14 +387,15 @@
       </div>
     </section>
 
+    <footer class="workspace-footer"><span>Stock Tracker · 台股投資組合</span><span>報價可能延遲 · 損益未計入交易成本與股利</span></footer>
   </main>
 
   <!-- MODAL: Add / Edit Position -->
-  <div id="positionModal" class="fixed inset-0 z-50 hidden bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+  <div id="positionModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" class="fixed inset-0 z-50 hidden bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
     <div class="bg-white dark:bg-slate-900 border-2 border-slate-300 dark:border-slate-700 rounded-2xl max-w-lg w-full p-4 sm:p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto custom-scrollbar">
       <div class="flex items-center justify-between border-b-2 border-slate-200 dark:border-slate-800 pb-3">
         <h3 id="modalTitle" class="text-base sm:text-lg font-black text-slate-900 dark:text-white">新增 / 編輯投資標的</h3>
-        <button id="btnCloseModal" type="button" class="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white p-1.5 text-lg font-bold">
+        <button id="btnCloseModal" aria-label="關閉編輯視窗" type="button" class="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white p-1.5 text-lg font-bold">
           ✕
         </button>
       </div>
@@ -468,63 +405,63 @@
 
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">股票代號 (Symbol) *</label>
-            <input id="formSymbol" type="text" required placeholder="例如: 2330" class="w-full bg-slate-50 dark:bg-slate-950 border-2 border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-white font-mono font-bold focus:outline-none focus:border-indigo-600">
+            <label for="formSymbol" class="block text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">股票代號 (Symbol) *</label>
+            <input id="formSymbol" type="text" required placeholder="例如: 2330" class="w-full bg-slate-50 dark:bg-slate-950 border-2 border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-white font-mono font-bold focus:outline-none focus:border-sky-600">
           </div>
           <div>
-            <label class="block text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">股票名稱 *</label>
-            <input id="formName" type="text" required placeholder="例如: 台積電" class="w-full bg-slate-50 dark:bg-slate-950 border-2 border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-white font-bold focus:outline-none focus:border-indigo-600">
+            <label for="formName" class="block text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">股票名稱 *</label>
+            <input id="formName" type="text" required placeholder="例如: 台積電" class="w-full bg-slate-50 dark:bg-slate-950 border-2 border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-white font-bold focus:outline-none focus:border-sky-600">
           </div>
         </div>
 
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">追蹤狀態 *</label>
-            <select id="formStatus" class="w-full bg-slate-50 dark:bg-slate-950 border-2 border-slate-300 dark:border-slate-700 rounded-xl px-2.5 py-2 text-slate-900 dark:text-white font-bold focus:outline-none focus:border-indigo-600">
+            <label for="formStatus" class="block text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">追蹤狀態 *</label>
+            <select id="formStatus" class="w-full bg-slate-50 dark:bg-slate-950 border-2 border-slate-300 dark:border-slate-700 rounded-xl px-2.5 py-2 text-slate-900 dark:text-white font-bold focus:outline-none focus:border-sky-600">
               <option value="active">追蹤中 (即時計算漲跌)</option>
               <option value="exited">已出場固定 (不再追蹤)</option>
             </select>
           </div>
           <div>
-            <label class="block text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">交易類別標籤</label>
-            <input id="formActionLabel" type="text" placeholder="買進 / 補進 / 出清" class="w-full bg-slate-50 dark:bg-slate-950 border-2 border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-white font-bold focus:outline-none focus:border-indigo-600">
+            <label for="formActionLabel" class="block text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">交易類別標籤</label>
+            <input id="formActionLabel" type="text" placeholder="買進 / 補進 / 出清" class="w-full bg-slate-50 dark:bg-slate-950 border-2 border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-white font-bold focus:outline-none focus:border-sky-600">
           </div>
         </div>
 
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">交易日期</label>
-            <input id="formTradeDate" type="date" class="w-full bg-slate-50 dark:bg-slate-950 border-2 border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-white font-mono font-bold focus:outline-none focus:border-indigo-600">
+            <label for="formTradeDate" class="block text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">交易日期</label>
+            <input id="formTradeDate" type="date" class="w-full bg-slate-50 dark:bg-slate-950 border-2 border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-white font-mono font-bold focus:outline-none focus:border-sky-600">
           </div>
           <div>
-            <label class="block text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">持有股數 (1張=1000股) *</label>
-            <input id="formShares" type="number" step="1" min="1" required placeholder="1000" class="w-full bg-slate-50 dark:bg-slate-950 border-2 border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-white font-mono font-bold focus:outline-none focus:border-indigo-600">
+            <label for="formShares" class="block text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">持有股數 (1張=1000股) *</label>
+            <input id="formShares" type="number" step="1" min="1" required placeholder="1000" class="w-full bg-slate-50 dark:bg-slate-950 border-2 border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-white font-mono font-bold focus:outline-none focus:border-sky-600">
           </div>
         </div>
 
         <div class="grid grid-cols-3 gap-2.5">
           <div>
-            <label class="block text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">買進成本 ($)</label>
-            <input id="formBuyPrice" type="number" step="0.01" placeholder="成本價" class="w-full bg-slate-50 dark:bg-slate-950 border-2 border-slate-300 dark:border-slate-700 rounded-xl px-2.5 py-2 text-slate-900 dark:text-white font-mono font-bold focus:outline-none focus:border-indigo-600">
+            <label for="formBuyPrice" class="block text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">買進成本 ($)</label>
+            <input id="formBuyPrice" type="number" step="0.01" placeholder="成本價" class="w-full bg-slate-50 dark:bg-slate-950 border-2 border-slate-300 dark:border-slate-700 rounded-xl px-2.5 py-2 text-slate-900 dark:text-white font-mono font-bold focus:outline-none focus:border-sky-600">
           </div>
           <div>
-            <label class="block text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">目前現價 ($)</label>
-            <input id="formCurrentPrice" type="number" step="0.01" required placeholder="現價" class="w-full bg-slate-50 dark:bg-slate-950 border-2 border-slate-300 dark:border-slate-700 rounded-xl px-2.5 py-2 text-slate-900 dark:text-white font-mono font-bold focus:outline-none focus:border-indigo-600">
+            <label for="formCurrentPrice" class="block text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">目前現價 ($)</label>
+            <input id="formCurrentPrice" type="number" step="0.01" required placeholder="現價" class="w-full bg-slate-50 dark:bg-slate-950 border-2 border-slate-300 dark:border-slate-700 rounded-xl px-2.5 py-2 text-slate-900 dark:text-white font-mono font-bold focus:outline-none focus:border-sky-600">
           </div>
           <div>
-            <label class="block text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">昨日收盤 ($)</label>
-            <input id="formPrevClose" type="number" step="0.01" placeholder="昨收價" class="w-full bg-slate-50 dark:bg-slate-950 border-2 border-slate-300 dark:border-slate-700 rounded-xl px-2.5 py-2 text-slate-900 dark:text-white font-mono font-bold focus:outline-none focus:border-indigo-600">
+            <label for="formPrevClose" class="block text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">昨日收盤 ($)</label>
+            <input id="formPrevClose" type="number" step="0.01" placeholder="昨收價" class="w-full bg-slate-50 dark:bg-slate-950 border-2 border-slate-300 dark:border-slate-700 rounded-xl px-2.5 py-2 text-slate-900 dark:text-white font-mono font-bold focus:outline-none focus:border-sky-600">
           </div>
         </div>
 
         <div class="grid grid-cols-2 gap-3 p-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-300 dark:border-amber-500/30">
           <div>
-            <label class="block text-xs sm:text-sm font-bold text-amber-900 dark:text-amber-300 mb-1">出場成交價 (已出場填)</label>
+            <label for="formExitPrice" class="block text-xs sm:text-sm font-bold text-amber-900 dark:text-amber-300 mb-1">出場成交價 (已出場填)</label>
             <input id="formExitPrice" type="number" step="0.01" placeholder="賣出成交價" class="w-full bg-white dark:bg-slate-950 border-2 border-amber-300 dark:border-slate-700 rounded-xl px-2.5 py-2 text-slate-900 dark:text-amber-200 font-mono font-bold focus:outline-none focus:border-amber-500">
           </div>
           <div>
-            <label class="block text-xs sm:text-sm font-bold text-indigo-900 dark:text-indigo-300 mb-1">目標價 (選填)</label>
-            <input id="formTargetPrice" type="number" step="0.01" placeholder="例如: 300" class="w-full bg-white dark:bg-slate-950 border-2 border-indigo-200 dark:border-slate-700 rounded-xl px-2.5 py-2 text-slate-900 dark:text-indigo-200 font-mono font-bold focus:outline-none focus:border-indigo-500">
+            <label for="formTargetPrice" class="block text-xs sm:text-sm font-bold text-sky-900 dark:text-sky-300 mb-1">目標價 (選填)</label>
+            <input id="formTargetPrice" type="number" step="0.01" placeholder="例如: 300" class="w-full bg-white dark:bg-slate-950 border-2 border-sky-200 dark:border-slate-700 rounded-xl px-2.5 py-2 text-slate-900 dark:text-sky-200 font-mono font-bold focus:outline-none focus:border-sky-500">
           </div>
         </div>
 
@@ -539,7 +476,7 @@
           <button id="btnCancelModal" type="button" class="px-4 py-2.5 rounded-xl text-sm font-bold bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-300">
             取消
           </button>
-          <button type="submit" class="px-5 py-2.5 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm">
+          <button type="submit" class="px-5 py-2.5 rounded-xl text-sm font-bold bg-sky-600 hover:bg-sky-700 text-white shadow-sm">
             儲存變更並更新 JSON
           </button>
         </div>
@@ -558,12 +495,12 @@
         <input type="hidden" id="exitModalId">
         <p id="exitModalDesc" class="text-slate-700 dark:text-slate-300 font-medium leading-relaxed"></p>
         <div>
-          <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">最終賣出成交價 ($) *</label>
-          <input id="exitModalPrice" type="number" step="0.01" required class="w-full bg-slate-50 dark:bg-slate-950 border-2 border-amber-400 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-amber-800 dark:text-amber-300 font-mono text-lg font-black focus:outline-none focus:border-amber-500">
+          <label for="exitModalPrice" class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">最終賣出成交價 ($) *</label>
+            <input id="exitModalPrice" type="number" step="0.01" required class="w-full bg-slate-50 dark:bg-slate-950 border-2 border-amber-400 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-amber-800 dark:text-amber-300 font-mono text-lg font-black focus:outline-none focus:border-amber-500">
         </div>
         <div>
-          <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">出場日期</label>
-          <input id="exitModalDate" type="date" required class="w-full bg-slate-50 dark:bg-slate-950 border-2 border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white font-mono font-bold focus:outline-none focus:border-amber-500">
+          <label for="exitModalDate" class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">出場日期</label>
+            <input id="exitModalDate" type="date" required class="w-full bg-slate-50 dark:bg-slate-950 border-2 border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white font-mono font-bold focus:outline-none focus:border-amber-500">
         </div>
         <div class="flex items-center justify-end gap-3 pt-2">
           <button id="btnCancelExitModal" type="button" class="px-4 py-2.5 rounded-xl text-sm font-bold bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-300">取消</button>
@@ -574,11 +511,13 @@
   </div>
 
   <!-- Toast Notification -->
-  <div id="toastBox" class="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-5 sm:bottom-5 z-50 hidden px-4 py-3 rounded-2xl bg-slate-900 dark:bg-slate-800 border-2 border-indigo-500 text-sm font-bold text-white shadow-2xl flex items-center gap-2.5">
-    <span class="w-2.5 h-2.5 rounded-full bg-indigo-400 shrink-0"></span>
+  <div id="toastBox" class="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-5 sm:bottom-5 z-50 hidden px-4 py-3 rounded-2xl bg-slate-900 dark:bg-slate-800 border-2 border-sky-500 text-sm font-bold text-white shadow-2xl flex items-center gap-2.5">
+    <span class="w-2.5 h-2.5 rounded-full bg-sky-400 shrink-0"></span>
     <span id="toastMessage" class="truncate">已更新</span>
   </div>
 
+  <script type="module" src="assets/motion/motion.js"></script>
+  <script type="module" src="assets/moments/moments.js"></script>
   <script>
     // =========================================================================
     // 1. DEFAULT JSON DATA STRUCTURE
@@ -1314,13 +1253,13 @@
         if (btn) btn.setAttribute("aria-checked", "true");
         if (knob) {
           knob.classList.remove("translate-x-0");
-          knob.classList.add("translate-x-7");
+          knob.classList.add("translate-x-5");
         }
       } else {
         htmlEl.classList.remove("dark");
         if (btn) btn.setAttribute("aria-checked", "false");
         if (knob) {
-          knob.classList.remove("translate-x-7");
+          knob.classList.remove("translate-x-5");
           knob.classList.add("translate-x-0");
         }
       }
@@ -1505,11 +1444,31 @@
     // =========================================================================
     function renderAll() {
       renderKPIs();
+      renderAllocationOverview();
       renderTables();
       syncJsonEditorTextarea();
       if (!document.getElementById("tab-analytics").classList.contains("hidden")) {
         renderCharts();
       }
+    }
+
+    function renderAllocationOverview() {
+      const grouped = new Map();
+      for (const p of portfolioData.positions) {
+        if (p.status !== 'active' || p.trackLive === false) continue;
+        const key = p.market + ':' + p.symbol;
+        const entry = grouped.get(key) || { name: p.name, value: 0 };
+        entry.value += Number(p.shares) * Number(p.currentPrice);
+        grouped.set(key, entry);
+      }
+      const entries = [...grouped.values()].sort((a, b) => b.value - a.value);
+      const total = entries.reduce((sum, p) => sum + p.value, 0);
+      const top = entries.slice(0, 4);
+      if (entries.length > 4) top.push({ name: '其他持倉', value: entries.slice(4).reduce((sum, p) => sum + p.value, 0) });
+      const colors = ['#5ab9fc', '#91afcf', '#c1d3e4', '#637d99', '#354456'];
+      document.getElementById('allocationStrip').innerHTML = total > 0
+        ? '<div class="allocation-track">' + top.map((p, i) => '<span style="width:' + (p.value / total * 100) + '%;background:' + colors[i] + '"></span>').join('') + '</div><div class="allocation-labels">' + top.map((p, i) => '<span><i style="background:' + colors[i] + '"></i>' + escapeHtml(p.name) + '<b>' + (p.value / total * 100).toFixed(1) + '%</b></span>').join('') + '</div>'
+        : '<p class="empty-allocation">新增持倉後，這裡會顯示市值配置。</p>';
     }
 
     function renderKPIs() {
@@ -1740,7 +1699,7 @@
           if (g.maxTargetPrice && g.maxTargetPrice > 0) {
             const upside = ((g.maxTargetPrice - g.currentPrice) / g.currentPrice) * 100;
             targetBadge = `
-              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-900 dark:bg-indigo-500/20 dark:text-indigo-300 font-mono text-xs font-bold">
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-sky-100 text-sky-900 dark:bg-sky-500/20 dark:text-sky-300 font-mono text-xs font-bold">
                 🎯 最高目標 ${fmtPrice(g.maxTargetPrice)} (${upside >= 0 ? "+" : ""}${upside.toFixed(0)}%)
               </span>
             `;
@@ -1755,7 +1714,7 @@
               <div class="p-3 rounded-xl bg-slate-100/90 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2">
                 <div class="flex items-center justify-between gap-2">
                   <div class="flex items-center gap-1.5 flex-wrap">
-                    <span class="px-2 py-0.5 rounded bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 font-mono text-xs font-bold">#${idx + 1}</span>
+                    <span class="px-2 py-0.5 rounded bg-sky-500/15 text-sky-700 dark:text-sky-300 font-mono text-xs font-bold">#${idx + 1}</span>
                     <span class="font-mono text-xs font-bold text-slate-700 dark:text-slate-300">📅 ${escapeHtml(lot.tradeDate || "—")} ${escapeHtml(lot.tradeTime || "")}</span>
                     <span class="text-xs font-bold px-2 py-0.5 rounded bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300">${escapeHtml(lot.actionLabel || "買進")}</span>
                     ${lot.sharesAssumed ? `<span class="text-[11px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 dark:bg-amber-500/20 dark:text-amber-300">預設${lotSh}股</span>` : ""}
@@ -1789,9 +1748,9 @@
                 <div>
                   <div class="flex items-center gap-2 flex-wrap">
                     <span class="text-lg font-black text-slate-900 dark:text-white leading-tight">${escapeHtml(g.name)}</span>
-                    <span class="px-2 py-0.5 rounded-md bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-indigo-300 font-mono font-bold text-xs">${escapeHtml(g.symbol)}</span>
+                    <span class="px-2 py-0.5 rounded-md bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-sky-300 font-mono font-bold text-xs">${escapeHtml(g.symbol)}</span>
                     ${hasMultipleLots
-                      ? `<span class="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 dark:bg-indigo-500/20 dark:text-indigo-300 font-bold text-xs">共 ${lotCount} 筆</span>`
+                      ? `<span class="px-2 py-0.5 rounded-full bg-sky-100 text-sky-800 dark:bg-sky-500/20 dark:text-sky-300 font-bold text-xs">共 ${lotCount} 筆</span>`
                       : `<span class="text-xs font-bold px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300">${escapeHtml(p.actionLabel || "買進")}</span>`
                     }
                   </div>
@@ -1829,14 +1788,15 @@
                 </div>
 
                 <div class="text-right">
-                  <label class="block text-[11px] font-bold text-indigo-600 dark:text-indigo-400 mb-0.5">目前現價 (可改)</label>
+                  <label class="block text-[11px] font-bold text-sky-600 dark:text-sky-400 mb-0.5">目前現價 (可改)</label>
                   <input
                     type="number"
                     step="0.01"
+                    aria-label="${escapeHtml(g.name)} 現價"
                     data-action="quick-price"
                     data-id="${escapeHtml(p.id)}"
                     value="${g.currentPrice}"
-                    class="w-full text-right bg-white dark:bg-slate-900 border-2 border-slate-300 dark:border-slate-700 focus:border-indigo-500 rounded-lg px-2 py-1 font-mono font-black text-sm ${getTwColorClass(dayDiff)} focus:outline-none"
+                    class="w-full text-right bg-white dark:bg-slate-900 border-2 border-slate-300 dark:border-slate-700 focus:border-sky-500 rounded-lg px-2 py-1 font-mono font-black text-sm ${getTwColorClass(dayDiff)} focus:outline-none"
                   >
                 </div>
               </div>
@@ -1850,7 +1810,7 @@
 
                 <div class="flex items-center gap-1.5 ml-auto">
                   ${hasMultipleLots ? `
-                    <button type="button" data-action="toggle-group" data-group-key="${escapeHtml(g.key)}" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition flex items-center gap-1">
+                    <button type="button" data-action="toggle-group" data-group-key="${escapeHtml(g.key)}" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-sky-600 hover:bg-sky-700 text-white shadow-sm transition flex items-center gap-1">
                       <span>${isExpanded ? "▲ 收合明細" : `▼ 分批明細 (${lotCount})`}</span>
                     </button>
                   ` : `
@@ -1895,7 +1855,7 @@
             const upside = ((g.maxTargetPrice - g.currentPrice) / g.currentPrice) * 100;
             targetHtml = `
               <div class="mt-1">
-                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-indigo-100 text-indigo-900 dark:bg-indigo-500/20 dark:text-indigo-300 font-mono text-xs font-bold">
+                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-sky-100 text-sky-900 dark:bg-sky-500/20 dark:text-sky-300 font-mono text-xs font-bold">
                   🎯 最高目標 ${fmtPrice(g.maxTargetPrice)} (${upside >= 0 ? "+" : ""}${upside.toFixed(0)}%)
                 </span>
               </div>
@@ -1909,10 +1869,10 @@
             const lotPnl = (g.currentPrice - lotBuy) * lotSh;
             const lotRoi = lotBuy > 0 ? ((g.currentPrice - lotBuy) / lotBuy) * 100 : 0;
             return `
-              <tr class="${isExpanded ? "" : "hidden"} bg-slate-50/90 dark:bg-slate-950/70 border-l-4 border-indigo-500 text-sm transition">
+              <tr class="${isExpanded ? "" : "hidden"} bg-slate-50/90 dark:bg-slate-950/70 border-l-4 border-sky-500 text-sm transition">
                 <td class="py-3 pl-8 pr-4">
                   <div class="flex items-center gap-2 flex-wrap">
-                    <span class="px-2 py-0.5 rounded bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 font-mono text-xs font-bold">批次 #${idx + 1}</span>
+                    <span class="px-2 py-0.5 rounded bg-sky-500/15 text-sky-700 dark:text-sky-300 font-mono text-xs font-bold">批次 #${idx + 1}</span>
                     <span class="text-xs font-bold px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300">${escapeHtml(lot.actionLabel || "買進")}</span>
                     ${lot.sharesAssumed ? `<span class="text-xs font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 dark:bg-amber-500/20 dark:text-amber-300">預設${lotSh}股</span>` : ""}
                   </div>
@@ -1940,7 +1900,7 @@
                 </td>
                 <td class="py-3 px-4 whitespace-nowrap font-mono text-xs text-slate-600 dark:text-slate-300">
                   <div>📅 ${escapeHtml(lot.tradeDate || "—")} ${escapeHtml(lot.tradeTime || "")}</div>
-                  ${lot.targetPrice ? `<div class="text-indigo-600 dark:text-indigo-400 mt-0.5">單筆目標 ${fmtPrice(lot.targetPrice)}</div>` : ""}
+                  ${lot.targetPrice ? `<div class="text-sky-600 dark:text-sky-400 mt-0.5">單筆目標 ${fmtPrice(lot.targetPrice)}</div>` : ""}
                 </td>
                 <td class="py-3 px-4 text-right whitespace-nowrap">
                   <div class="inline-flex items-center justify-end gap-1.5">
@@ -1964,9 +1924,9 @@
               <td class="py-4 px-4">
                 <div class="flex items-center gap-2 flex-wrap">
                   <span class="text-lg font-black text-slate-900 dark:text-white leading-snug">${escapeHtml(g.name)}</span>
-                  <span class="px-2 py-0.5 rounded-md bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-indigo-300 font-mono font-bold text-xs">${escapeHtml(g.symbol)}</span>
+                  <span class="px-2 py-0.5 rounded-md bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-sky-300 font-mono font-bold text-xs">${escapeHtml(g.symbol)}</span>
                   ${hasMultipleLots
-                    ? `<span class="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 dark:bg-indigo-500/20 dark:text-indigo-300 font-bold text-xs">共 ${lotCount} 筆</span>`
+                    ? `<span class="px-2 py-0.5 rounded-full bg-sky-100 text-sky-800 dark:bg-sky-500/20 dark:text-sky-300 font-bold text-xs">共 ${lotCount} 筆</span>`
                     : `<span class="text-xs font-bold px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300">${escapeHtml(p.actionLabel || "買進")}</span>`
                   }
                   ${g.anyAssumed ? `<span class="text-xs font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 dark:bg-amber-500/20 dark:text-amber-300">${hasMultipleLots ? "含預設股數" : `預設${g.totalShares}股`}</span>` : ""}
@@ -1988,11 +1948,12 @@
                   <input
                     type="number"
                     step="0.05"
+                    aria-label="${escapeHtml(g.name)} 現價"
                     data-action="quick-price"
                     data-id="${escapeHtml(p.id)}"
                     value="${g.currentPrice}"
                     title="點擊可直接修改現價（同標的同步套用）"
-                    class="w-28 text-right bg-slate-50 dark:bg-slate-950 border-2 border-slate-300 dark:border-slate-700 hover:border-indigo-500 focus:border-indigo-600 rounded-xl px-2.5 py-1.5 font-mono font-black text-base ${getTwColorClass(dayDiff)} focus:outline-none shadow-inner"
+                    class="w-28 text-right bg-slate-50 dark:bg-slate-950 border-2 border-slate-300 dark:border-slate-700 hover:border-sky-500 focus:border-sky-600 rounded-xl px-2.5 py-1.5 font-mono font-black text-base ${getTwColorClass(dayDiff)} focus:outline-none shadow-inner"
                   >
                 </div>
                 <div class="text-xs text-slate-500 dark:text-slate-400 font-mono mt-1">總市值 ${fmtCurrency(g.marketValue)}</div>
@@ -2024,7 +1985,7 @@
               <td class="py-4 px-4 text-right whitespace-nowrap">
                 <div class="inline-flex flex-wrap items-center justify-end gap-1.5">
                   ${hasMultipleLots ? `
-                    <button type="button" data-action="toggle-group" data-group-key="${escapeHtml(g.key)}" class="px-3 py-2 rounded-xl text-xs font-bold ${isExpanded ? "bg-indigo-600 text-white" : "bg-indigo-50 hover:bg-indigo-100 text-indigo-800 dark:bg-indigo-500/20 dark:hover:bg-indigo-500/30 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30"} transition">
+                    <button type="button" data-action="toggle-group" data-group-key="${escapeHtml(g.key)}" class="px-3 py-2 rounded-xl text-xs font-bold ${isExpanded ? "bg-sky-600 text-white" : "bg-sky-50 hover:bg-sky-100 text-sky-800 dark:bg-sky-500/20 dark:hover:bg-sky-500/30 dark:text-sky-300 border border-sky-200 dark:border-sky-500/30"} transition">
                       ${isExpanded ? `▲ 收合 (${lotCount})` : `▼ 明細 (${lotCount})`}
                     </button>
                   ` : `
@@ -2083,7 +2044,7 @@
                   <span>損益: ${lotHasBuy ? fmtSignedCurrency(lotPnl) : "待補成本"}</span>
                 </div>
                 <div class="flex items-center justify-end gap-1.5 pt-1 border-t border-slate-200/70 dark:border-slate-800">
-                  <button type="button" data-action="reactivate-pos" data-id="${escapeHtml(lot.id)}" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-indigo-50 dark:bg-slate-800 text-indigo-800 dark:text-slate-200 border border-indigo-200 dark:border-slate-700">恢復追蹤</button>
+                  <button type="button" data-action="reactivate-pos" data-id="${escapeHtml(lot.id)}" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-sky-50 dark:bg-slate-800 text-sky-800 dark:text-slate-200 border border-sky-200 dark:border-slate-700">恢復追蹤</button>
                   <button type="button" data-action="edit-pos" data-id="${escapeHtml(lot.id)}" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700">編輯</button>
                   <button type="button" data-action="delete-pos" data-id="${escapeHtml(lot.id)}" class="px-2 py-1 rounded-lg text-xs font-bold bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-700">刪除</button>
                 </div>
@@ -2113,7 +2074,7 @@
                   ${hasBuy
                     ? `<span class="inline-block px-2.5 py-1 rounded-xl font-mono font-black text-sm ${getTwBadgeClass(g.exitedRoi)}">${fmtPct(g.exitedRoi)}</span>
                        <div class="font-mono text-base font-black mt-1 ${getTwColorClass(g.realizedPnl)}">${fmtSignedCurrency(g.realizedPnl)}</div>`
-                    : `<button type="button" data-action="edit-pos" data-id="${escapeHtml(p.id)}" class="px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-500/15 text-xs font-bold text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30">+ 補填買價</button>`
+                    : `<button type="button" data-action="edit-pos" data-id="${escapeHtml(p.id)}" class="px-2.5 py-1 rounded-lg bg-sky-50 dark:bg-sky-500/15 text-xs font-bold text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-500/30">+ 補填買價</button>`
                   }
                 </div>
               </div>
@@ -2143,7 +2104,7 @@
                       ${isExpanded ? "▲ 收合" : `▼ 明細 (${lotCount})`}
                     </button>
                   ` : `
-                    <button type="button" data-action="reactivate-pos" data-id="${escapeHtml(p.id)}" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-50 dark:bg-slate-800 text-indigo-800 dark:text-slate-200 border border-indigo-200 dark:border-slate-700">
+                    <button type="button" data-action="reactivate-pos" data-id="${escapeHtml(p.id)}" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-sky-50 dark:bg-slate-800 text-sky-800 dark:text-slate-200 border border-sky-200 dark:border-slate-700">
                       恢復追蹤
                     </button>
                     <button type="button" data-action="edit-pos" data-id="${escapeHtml(p.id)}" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700">
@@ -2193,7 +2154,7 @@
                   <div class="text-xs text-slate-500">回收 ${fmtCurrency(lotSh * lotExit)}</div>
                 </td>
                 <td class="py-3 px-3 text-right font-mono">
-                  ${lotHasBuy ? fmtPrice(lotBuy) : `<button type="button" data-action="edit-pos" data-id="${escapeHtml(lot.id)}" class="px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-500/15 text-xs font-bold text-indigo-700 dark:text-indigo-300">+ 補填買價</button>`}
+                  ${lotHasBuy ? fmtPrice(lotBuy) : `<button type="button" data-action="edit-pos" data-id="${escapeHtml(lot.id)}" class="px-2 py-0.5 rounded bg-sky-50 dark:bg-sky-500/15 text-xs font-bold text-sky-700 dark:text-sky-300">+ 補填買價</button>`}
                 </td>
                 <td class="py-3 px-3 text-right font-mono font-bold text-amber-700 dark:text-amber-300">
                   ${fmtPrice(lotExit)}
@@ -2206,7 +2167,7 @@
                 </td>
                 <td class="py-3 px-4 text-right whitespace-nowrap">
                   <div class="inline-flex items-center justify-end gap-1.5">
-                    <button type="button" data-action="reactivate-pos" data-id="${escapeHtml(lot.id)}" class="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-indigo-50 dark:bg-slate-800 text-indigo-800 dark:text-slate-200 border border-indigo-200 dark:border-slate-700">恢復追蹤</button>
+                    <button type="button" data-action="reactivate-pos" data-id="${escapeHtml(lot.id)}" class="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-sky-50 dark:bg-slate-800 text-sky-800 dark:text-slate-200 border border-sky-200 dark:border-slate-700">恢復追蹤</button>
                     <button type="button" data-action="edit-pos" data-id="${escapeHtml(lot.id)}" class="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700">編輯</button>
                     <button type="button" data-action="delete-pos" data-id="${escapeHtml(lot.id)}" class="px-2 py-1.5 rounded-lg text-xs font-bold bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-700">刪除</button>
                   </div>
@@ -2236,7 +2197,7 @@
                 <div class="text-xs font-medium text-slate-500 dark:text-slate-400">回收 ${fmtCurrency(g.totalExitProceeds)}</div>
               </td>
               <td class="py-4 px-3 text-right font-mono text-base font-bold">
-                ${g.avgBuyPrice !== null ? fmtPrice(g.avgBuyPrice) : `<button type="button" data-action="edit-pos" data-id="${escapeHtml(p.id)}" class="px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-500/15 text-xs font-bold text-indigo-700 dark:text-indigo-300 hover:underline border border-indigo-200 dark:border-indigo-500/30">+ 補填買價</button>`}
+                ${g.avgBuyPrice !== null ? fmtPrice(g.avgBuyPrice) : `<button type="button" data-action="edit-pos" data-id="${escapeHtml(p.id)}" class="px-2.5 py-1 rounded-lg bg-sky-50 dark:bg-sky-500/15 text-xs font-bold text-sky-700 dark:text-sky-300 hover:underline border border-sky-200 dark:border-sky-500/30">+ 補填買價</button>`}
               </td>
               <td class="py-4 px-3 text-right font-mono text-base font-black text-amber-700 dark:text-amber-300">
                 ${fmtPrice(g.avgExitPrice)}
@@ -2254,7 +2215,7 @@
                       ${isExpanded ? `▲ 收合 (${lotCount})` : `▼ 明細 (${lotCount})`}
                     </button>
                   ` : `
-                    <button type="button" data-action="reactivate-pos" data-id="${escapeHtml(p.id)}" class="px-3 py-2 rounded-xl text-xs font-bold bg-indigo-50 hover:bg-indigo-100 dark:bg-slate-800 dark:hover:bg-indigo-600/30 text-indigo-800 dark:text-slate-200 border border-indigo-200 dark:border-slate-700 transition">
+                    <button type="button" data-action="reactivate-pos" data-id="${escapeHtml(p.id)}" class="px-3 py-2 rounded-xl text-xs font-bold bg-sky-50 hover:bg-sky-100 dark:bg-slate-800 dark:hover:bg-sky-600/30 text-sky-800 dark:text-slate-200 border border-sky-200 dark:border-slate-700 transition">
                       恢復追蹤
                     </button>
                     <button type="button" data-action="edit-pos" data-id="${escapeHtml(p.id)}" class="px-3 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 transition">
@@ -2332,7 +2293,7 @@
       const allocLabels = activeGroups.map(g => `${g.name} (${g.symbol})`);
       const allocData = activeGroups.map(g => Math.round(g.marketValue));
       const palette = [
-        "#4f46e5", "#e11d48", "#d97706", "#059669", "#2563eb", "#7c3aed", "#0d9488", "#db2777", "#0284c7", "#ca8a04"
+        "#5ab9fc", "#91afcf", "#c1d3e4", "#637d99", "#354456", "#168aad", "#61a5c2", "#89c2d9", "#a9d6e5", "#4a6f8c", "#24647a", "#94a3b8", "#567997"
       ];
 
       const allocCtx = document.getElementById("allocationChartCanvas").getContext("2d");
@@ -2984,6 +2945,7 @@
     }
 
     function initEvents() {
+      document.getElementById("btnExportJson").addEventListener("click", downloadJsonFile);
       document.getElementById("btnThemeToggle").addEventListener("click", toggleTheme);
       document.getElementById("btnLiveFetch").addEventListener("click", syncNetworkQuotes);
       document.getElementById("btnOpenAddModal").addEventListener("click", () => openPositionModal(null));
@@ -3050,13 +3012,21 @@
       document.getElementById(tabId).classList.remove("hidden");
 
       document.querySelectorAll(".main-tab-btn").forEach(btn => {
+        btn.setAttribute("aria-current", btn.dataset.tab === tabId ? "page" : "false");
         if (btn.dataset.tab === tabId) {
-          btn.className = "main-tab-btn justify-center px-2 py-2 sm:px-4 sm:py-2.5 rounded-xl text-xs sm:text-base font-bold bg-indigo-600 text-white shadow-sm transition flex items-center gap-1 text-center truncate";
+          btn.className = "main-tab-btn justify-center px-2 py-2 sm:px-4 sm:py-2.5 rounded-xl text-xs sm:text-base font-bold bg-sky-600 text-white shadow-sm transition flex items-center gap-1 text-center truncate";
         } else {
           btn.className = "main-tab-btn justify-center px-2 py-2 sm:px-4 sm:py-2.5 rounded-xl text-xs sm:text-base font-bold bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border-2 border-slate-300 dark:border-slate-800 transition flex items-center gap-1 text-center truncate";
         }
       });
 
+      document.querySelector('.overview-metrics')?.classList.toggle('hidden', tabId !== 'tab-portfolio');
+      document.getElementById('allocationOverview').classList.toggle('hidden', tabId !== 'tab-portfolio');
+      const titles = { 'tab-portfolio': ['台股投資組合', '從每一筆持倉，看見資產的全貌。'], 'tab-analytics': ['損益與市值配置', '檢視各標的報酬，掌握投資組合權重。'], 'tab-json': ['投資資料管理', '匯入、編輯與備份你的投資紀錄。'] };
+      const heading = document.querySelector('.workspace-heading h1');
+      if (heading) heading.textContent = titles[tabId][0];
+      const lead = document.querySelector('.workspace-heading p');
+      if (lead) lead.textContent = titles[tabId][1];
       const filterBar = document.getElementById("portfolioFilterBar");
       filterBar.classList.toggle("hidden", tabId !== "tab-portfolio");
 

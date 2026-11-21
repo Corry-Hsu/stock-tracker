@@ -500,3 +500,25 @@ test('failed sync reports HTTP errors and preserves saved prices', async () => {
 });
 
 
+
+test('allocation overview groups active lots, excludes exited positions, and totals 100 percent', () => {
+  const a = app();
+  a.run(`portfolioData.positions = [
+    { name: '甲', symbol: '2330', market: 'TWSE', status: 'active', shares: 10, currentPrice: 10 },
+    { name: '甲', symbol: '2330', market: 'TWSE', status: 'active', shares: 10, currentPrice: 10 },
+    { name: '乙', symbol: '1234', market: 'TWSE', status: 'active', shares: 10, currentPrice: 20 },
+    { name: '已出場', symbol: '9999', market: 'TWSE', status: 'exited', shares: 1000, currentPrice: 100 }
+  ]; renderAllocationOverview();`);
+  const html = a.element('allocationStrip').innerHTML;
+  assert.equal((html.match(/50.0%/g) || []).length, 2);
+  assert.ok(!html.includes('已出場'));
+  assert.ok(html.includes('甲') && html.includes('乙'));
+});
+
+test('allocation overview escapes imported names and handles an empty portfolio', () => {
+  const a = app();
+  a.run(`portfolioData.positions = [{name:'<img onerror=alert(1)>', symbol:'1234', market:'TWSE', status:'active', shares:1, currentPrice:10}]; renderAllocationOverview();`);
+  assert.ok(!a.element('allocationStrip').innerHTML.includes('<img'));
+  a.run('portfolioData.positions = []; renderAllocationOverview();');
+  assert.match(a.element('allocationStrip').innerHTML, /新增持倉/);
+});
